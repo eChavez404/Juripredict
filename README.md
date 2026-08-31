@@ -130,4 +130,4 @@ completa não é pública.
 
 ---
 
-© 2026 Elias Chaves Sousa e Kauan Leite. Todos os direitos reservados.
+© 2026 Elias Chaves Sousa e Kauan Leite dos Santos. Todos os direitos reservados.
