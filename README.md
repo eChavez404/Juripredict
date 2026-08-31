@@ -120,7 +120,7 @@ python scripts/ingest/rotular_por_regra.py  # testes embutidos
 ## Equipe
 
 Elias Chaves Sousa — engenharia de dados e IA
-Kauan Leite — *(papel a definir)*
+Kauan Leite dos Santos — Extração de dados via técnicas de Web Crawling e Web Scraping
 
 ## Contexto
 
