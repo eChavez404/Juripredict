@@ -117,11 +117,6 @@ python scripts/ingest/rotular_por_regra.py  # testes embutidos
 | API e interface de consulta | previsto |
 | Modelo preditivo | condicionado à auditoria |
 
-## Equipe
-
-Elias Chaves Sousa — engenharia de dados e IA
-Kauan Leite — *(papel a definir)*
-
 ## Contexto
 
 Projeto desenvolvido em 2026.2 no curso de Sistemas de Informação do Centro
