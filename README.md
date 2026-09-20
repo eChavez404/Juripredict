@@ -27,6 +27,11 @@ O recorte inicial é o **adicional de insalubridade no TRT da 16ª Região**
 (Maranhão). O corpus coletado até agora cobre **janeiro de 2024 a janeiro de
 2026** — 787 sentenças. A janela pretendida é maior; esta é a que existe.
 
+> **O conjunto de dados está em [`publicacao/juripredict_insalubridade.csv`](publicacao/juripredict_insalubridade.csv)**
+> — 413 registros, com [cartão de descrição](publicacao/DATASET_CARD.md) ao lado.
+> É a versão pseudonimizada: sem texto de sentença, sem número de processo e sem
+> nome de parte.
+
 ## Princípios
 
 O projeto assume três compromissos que moldam a arquitetura inteira:
@@ -96,12 +101,27 @@ dataset/
     auditoria_cobertura.py  medição de cobertura das fontes
     schema.sql
   tests/            21 testes, sem rede
-  data/             corpus, manifesto, banco e juripredict.csv — não versionado
-publicacao/         produto: CSV publicável + cartão do conjunto
-finetune/           produto: JSONL de extração
+  data/             corpus, manifesto, banco e dataset de trabalho — local
+publicacao/         **o dataset publicado** — CSV + cartão de descrição
+finetune/           pares texto → rótulo em JSONL — local
+docs/               documentação de entrega — local
 backend/            aplicação Django e API REST — camada 3, não iniciada
 frontend/           aplicação React — camada 4, não iniciada
 ```
+
+### O que está no repositório e o que fica local
+
+| | no GitHub | por quê |
+|---|---|---|
+| Código do coletor e do pipeline | sim | é o trabalho |
+| `publicacao/juripredict_insalubridade.csv` | **sim** | pseudonimizado, sem texto nem número de processo |
+| `publicacao/DATASET_CARD.md` | sim | procedência, limitações e o que o conjunto não é |
+| `dataset/data/` — corpus, banco, dataset de trabalho | não | sentenças trazem nome de parte e laudo pericial |
+| `finetune/*.jsonl` | não | carregam o texto integral das decisões |
+| `_mapa_unidades_NAO_PUBLICAR.csv` | não | desfaz a pseudonimização |
+
+O corpus é reconstruível: `dataset/collector/` baixa de novo da fonte pública, e
+o pipeline reproduz o dataset a partir dele.
 
 ## Rodando localmente
 
@@ -152,9 +172,17 @@ cd ../ && python -m pytest tests/ -q     # 21 testes
 
 ## O dataset
 
-Um arquivo: `dataset/data/juripredict.csv` — 618 linhas. Todo caso do pedido
-está nele, inclusive os que não entram no modelo. Duas colunas dizem o estatuto
-de cada linha, em vez de a exclusão existir só como número num relatório.
+Há duas versões, com finalidades diferentes.
+
+**A publicada** — `publicacao/juripredict_insalubridade.csv`, 413 registros e 12
+colunas. É a que está no repositório e a que deve ser usada para análise. O
+processo aparece como hash truncado, a unidade julgadora como pseudônimo estável
+(`unidade_01`, `unidade_02`, …), e a data reduzida a ano e trimestre.
+
+**A de trabalho** — `dataset/data/juripredict.csv`, 618 linhas. Fica local, porque
+carrega o número do processo. Todo caso do pedido está nela, inclusive os que não
+entram no modelo: duas colunas dizem o estatuto de cada linha, em vez de a
+exclusão existir só como número num relatório.
 
 | `populacao` | linhas | o que é |
 |---|---|---|
