@@ -1,0 +1,20 @@
+# JuriPredict - camada 1 (dataset). Python 3.12.
+#
+#   python -m venv .venv
+#   .venv\Scripts\activate          # Windows
+#   pip install -r requirements.txt
+
+# coleta
+requests==2.34.2
+beautifulsoup4==4.15.0
+lxml==6.1.3
+
+# processamento e montagem do dataset
+pandas==3.0.6
+numpy==2.5.3
+
+# testes
+pytest==9.1.1
+
+# opcional: so necessario se o corpus trouxer PDF em vez de HTML
+# pymupdf
