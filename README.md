@@ -101,10 +101,7 @@ dataset/
     auditoria_cobertura.py  medição de cobertura das fontes
     schema.sql
   tests/            21 testes, sem rede
-  data/             corpus, manifesto, banco e dataset de trabalho — local
 publicacao/         **o dataset publicado** — CSV + cartão de descrição
-finetune/           pares texto → rótulo em JSONL — local
-docs/               documentação de entrega — local
 backend/            aplicação Django e API REST — camada 3, não iniciada
 frontend/           aplicação React — camada 4, não iniciada
 ```
