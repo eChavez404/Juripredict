@@ -47,14 +47,19 @@ service-account*.json
 # ---------------------------------------------------------------- 3. DERIVADOS
 # Produtos de lote. A PASTA e versionada (README + .gitkeep); o conteudo, nao:
 # sao artefatos de uma execucao datada, reproduziveis por um comando.
-publicacao/*
-!publicacao/.gitkeep
-!publicacao/README.md
-# O UNICO dataset que sobe. Auditado: sem texto, sem nome de parte, sem CNJ;
-# `id` e hash truncado, `unidade` e pseudonimo, data reduzida a ano/trimestre,
-# e regiao com menos de 2 unidades vira 'demais' para nao desfazer o pseudonimo.
-!publicacao/juripredict_insalubridade.csv
-!publicacao/DATASET_CARD.md
+# publicacao/ e a PASTA DE ENTREGA: o conteudo sobe, porque e o que o
+# avaliador precisa ver. Os arquivos aqui ja passaram pelo exportador - sem
+# texto de sentenca, sem numero de processo, sem nome de parte; `id` e hash
+# truncado, `unidade` e pseudonimo, e data reduzida a ano e trimestre.
+#
+# Nao se usa `publicacao/*` com excecoes: essa regra exclui os DIRETORIOS
+# TED1/ e TED2/, e o git nao reinclui arquivo cujo diretorio-pai foi excluido -
+# as linhas `!publicacao/...` nunca chegam a ser avaliadas. Por isso aqui se
+# bloqueia arquivo a arquivo, nao a pasta inteira.
+
+# Desfaz a pseudonimizacao: em qualquer subpasta, nunca sobe.
+publicacao/**/_mapa_unidades_NAO_PUBLICAR.csv
+publicacao/_mapa_unidades_NAO_PUBLICAR.csv
 
 finetune/*
 !finetune/.gitkeep
