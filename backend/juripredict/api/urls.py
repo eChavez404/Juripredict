@@ -1,0 +1,31 @@
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenRefreshView
+
+from .views import (
+    AlterarSenhaAPIView,
+    ClienteViewSet,
+    CustomTokenObtainPairView,
+    DashboardAPIView,
+    EventoAgendaViewSet,
+    JurimetriaAPIView,
+    ProcessoViewSet,
+    UsuarioAtualAPIView,
+)
+
+
+router = DefaultRouter()
+router.register("clientes", ClienteViewSet, basename="cliente")
+router.register("processos", ProcessoViewSet, basename="processo")
+router.register("eventos", EventoAgendaViewSet, basename="evento")
+
+
+urlpatterns = [
+    path("auth/token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/me/", UsuarioAtualAPIView.as_view(), name="usuario-atual"),
+    path("auth/password/", AlterarSenhaAPIView.as_view(), name="alterar-senha"),
+    path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
+    path("jurimetria/", JurimetriaAPIView.as_view(), name="jurimetria"),
+    path("", include(router.urls)),
+]
