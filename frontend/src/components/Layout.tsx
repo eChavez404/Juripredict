@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '../contexts/auth';
+import EscritorioSelector from '../features/escritorios/EscritorioSelector';
 import Brand from './ui/Brand';
 
 const navItems = [
@@ -29,6 +30,8 @@ const pageLabels: Record<string, string> = {
   '/agenda': 'Agenda e prazos',
   '/jurimetria': 'Inteligência e jurimetria',
   '/configuracoes': 'Configurações da conta',
+  '/configuracoes/equipe': 'Equipe e permissões',
+  '/configuracoes/auditoria': 'Trilha de auditoria',
 };
 
 const Layout = () => {
@@ -125,6 +128,7 @@ const Layout = () => {
           </div>
 
           <div className="topbar__actions">
+            <EscritorioSelector />
             <button className="icon-button" type="button" aria-label="Próximos compromissos" onClick={() => navigate('/agenda')}>
               <Bell size={18} />
             </button>

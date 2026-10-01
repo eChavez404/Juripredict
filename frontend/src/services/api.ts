@@ -1,6 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { getStoredEscritorioId, setStoredEscritorioId } from '../features/escritorios/storage';
 
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1';
+export const API_URL = import.meta.env.VITE_API_URL ?? '/api/v1';
 
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -11,8 +12,12 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
+  const escritorioId = getStoredEscritorioId();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (escritorioId) {
+    config.headers['X-Escritorio-ID'] = String(escritorioId);
   }
   return config;
 });
@@ -42,6 +47,7 @@ api.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('juripredict_user');
+      setStoredEscritorioId(null);
       if (window.location.pathname !== '/login') {
         window.location.assign('/login');
       }

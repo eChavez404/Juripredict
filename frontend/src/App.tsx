@@ -10,6 +10,8 @@ const Clientes = lazy(() => import('./pages/Clientes'));
 const Agenda = lazy(() => import('./pages/Agenda'));
 const Jurimetria = lazy(() => import('./pages/Jurimetria'));
 const Configuracoes = lazy(() => import('./pages/Configuracoes'));
+const Equipe = lazy(() => import('./pages/Equipe'));
+const Auditoria = lazy(() => import('./pages/Auditoria'));
 
 const PrivateRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
@@ -37,6 +39,8 @@ const App = () => (
           <Route path="agenda" element={<Agenda />} />
           <Route path="jurimetria" element={<Jurimetria />} />
           <Route path="configuracoes" element={<Configuracoes />} />
+          <Route path="configuracoes/equipe" element={<Equipe />} />
+          <Route path="configuracoes/auditoria" element={<Auditoria />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

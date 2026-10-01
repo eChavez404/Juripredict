@@ -13,7 +13,7 @@ export const authService = {
   login: async (username: string, password: string) => (
     await api.post<{ access: string; refresh: string; user: Usuario }>('/auth/token/', { username, password })
   ).data,
-  me: async () => (await api.get<Usuario>('/auth/me/')).data,
+  me: async () => (await api.get<unknown>('/auth/me/')).data,
   updateMe: async (payload: Pick<Usuario, 'nome' | 'email'>) => (
     await api.patch<Usuario>('/auth/me/', payload)
   ).data,

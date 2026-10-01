@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { KeyRound, Save, UserRound } from 'lucide-react';
+import SettingsNav from '../components/settings/SettingsNav';
 import Feedback from '../components/ui/Feedback';
 import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/auth';
@@ -51,6 +52,7 @@ const Configuracoes = () => {
   return (
     <div className="page">
       <PageHeader eyebrow="Conta" title="Configurações" description="Atualize seus dados de acesso e informações de perfil." />
+      <SettingsNav />
       <section className="settings-grid">
         <article className="panel panel--padded settings-card">
           <div className="section-heading"><div><h2><UserRound size={18} /> Perfil</h2><p>Informações exibidas no sistema</p></div></div>
