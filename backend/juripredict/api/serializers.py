@@ -5,6 +5,11 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from organizations.capabilities import capabilities_do_membro
+from organizations.context import contexto_escritorio_da_request
+from organizations.selectors import memberships_do_usuario, resolver_membership
+from organizations.serializers import MembroEscritorioSerializer
+
 from .crypto_utils import decrypt_data, encrypt_data, hash_data
 from .models import Cliente, EventoAgenda, Processo
 
@@ -15,11 +20,51 @@ def somente_digitos(value: str) -> str:
 
 class UsuarioSerializer(serializers.ModelSerializer):
     nome = serializers.CharField(source="first_name", required=False, allow_blank=True)
+    memberships = serializers.SerializerMethodField()
+    escritorio_ativo = serializers.SerializerMethodField()
+    capabilities = serializers.SerializerMethodField()
 
     class Meta:
         model = get_user_model()
-        fields = ("id", "username", "email", "nome")
-        read_only_fields = ("id", "username")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "nome",
+            "memberships",
+            "escritorio_ativo",
+            "capabilities",
+        )
+        read_only_fields = (
+            "id",
+            "username",
+            "memberships",
+            "escritorio_ativo",
+            "capabilities",
+        )
+
+    def _membro_ativo(self, usuario):
+        request = self.context.get("request")
+        if request:
+            return contexto_escritorio_da_request(request, obrigatorio=False)
+        return resolver_membership(usuario, obrigatorio=False)
+
+    def get_memberships(self, usuario):
+        memberships = memberships_do_usuario(usuario, incluir_suspensos=True)
+        return MembroEscritorioSerializer(memberships, many=True).data
+
+    def get_escritorio_ativo(self, usuario):
+        membro = self._membro_ativo(usuario)
+        if not membro:
+            return None
+        return {
+            "id": str(membro.escritorio_id),
+            "nome": membro.escritorio.nome,
+            "fuso_horario": membro.escritorio.fuso_horario,
+        }
+
+    def get_capabilities(self, usuario):
+        return capabilities_do_membro(self._membro_ativo(usuario))
 
     def validate_email(self, value):
         queryset = get_user_model().objects.filter(email__iexact=value)
@@ -65,6 +110,7 @@ class ClienteSerializer(serializers.ModelSerializer):
         model = Cliente
         fields = (
             "id",
+            "escritorio",
             "nome",
             "cpf_cnpj",
             "email",
@@ -74,7 +120,14 @@ class ClienteSerializer(serializers.ModelSerializer):
             "criado_em",
             "atualizado_em",
         )
-        read_only_fields = ("id", "processos_count", "criado_em", "atualizado_em")
+        read_only_fields = (
+            "id",
+            "escritorio",
+            "processos_count",
+            "criado_em",
+            "atualizado_em",
+        )
+        validators = []
 
     def validate_cpf_cnpj(self, value):
         documento = somente_digitos(value)
@@ -83,8 +136,9 @@ class ClienteSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
         if request and request.user.is_authenticated:
+            escritorio = contexto_escritorio_da_request(request).escritorio
             queryset = Cliente.objects.filter(
-                usuario=request.user,
+                escritorio=escritorio,
                 cpf_cnpj_hash=hash_data(documento),
             )
             if self.instance:
@@ -102,6 +156,9 @@ class ClienteSerializer(serializers.ModelSerializer):
         documento = validated_data.pop("cpf_cnpj")
         return Cliente.objects.create(
             usuario=self.context["request"].user,
+            escritorio=contexto_escritorio_da_request(
+                self.context["request"]
+            ).escritorio,
             cpf_cnpj=encrypt_data(documento),
             cpf_cnpj_hash=hash_data(documento),
             **validated_data,
@@ -123,6 +180,7 @@ class ProcessoSerializer(serializers.ModelSerializer):
         model = Processo
         fields = (
             "id",
+            "escritorio",
             "numero_cnj",
             "titulo",
             "area",
@@ -143,12 +201,14 @@ class ProcessoSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "id",
+            "escritorio",
             "cliente_nome",
             "arquivo_peticao_inicial_url",
             "criado_em",
             "atualizado_em",
         )
         extra_kwargs = {"arquivo_peticao_inicial": {"write_only": True, "required": False}}
+        validators = []
 
     def get_arquivo_peticao_inicial_url(self, instance):
         if not instance.arquivo_peticao_inicial:
@@ -167,7 +227,8 @@ class ProcessoSerializer(serializers.ModelSerializer):
         )
         request = self.context.get("request")
         if request and request.user.is_authenticated:
-            queryset = Processo.objects.filter(usuario=request.user, numero_cnj=value)
+            escritorio = contexto_escritorio_da_request(request).escritorio
+            queryset = Processo.objects.filter(escritorio=escritorio, numero_cnj=value)
             if self.instance:
                 queryset = queryset.exclude(pk=self.instance.pk)
             if queryset.exists():
@@ -183,12 +244,20 @@ class ProcessoSerializer(serializers.ModelSerializer):
         return value
 
     def validate_cliente(self, cliente):
-        if cliente.usuario_id != self.context["request"].user.id:
-            raise serializers.ValidationError("Cliente inválido para este usuário.")
+        escritorio = contexto_escritorio_da_request(
+            self.context["request"]
+        ).escritorio
+        if cliente.escritorio_id != escritorio.id:
+            raise serializers.ValidationError("Cliente inválido para este escritório.")
         return cliente
 
     def create(self, validated_data):
-        return Processo.objects.create(usuario=self.context["request"].user, **validated_data)
+        request = self.context["request"]
+        return Processo.objects.create(
+            usuario=request.user,
+            escritorio=contexto_escritorio_da_request(request).escritorio,
+            **validated_data,
+        )
 
 
 class EventoAgendaSerializer(serializers.ModelSerializer):
@@ -199,6 +268,7 @@ class EventoAgendaSerializer(serializers.ModelSerializer):
         model = EventoAgenda
         fields = (
             "id",
+            "escritorio",
             "titulo",
             "tipo",
             "inicio",
@@ -214,6 +284,7 @@ class EventoAgendaSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "id",
+            "escritorio",
             "processo_numero",
             "cliente_nome",
             "criado_em",
@@ -221,8 +292,11 @@ class EventoAgendaSerializer(serializers.ModelSerializer):
         )
 
     def validate_processo(self, processo):
-        if processo and processo.usuario_id != self.context["request"].user.id:
-            raise serializers.ValidationError("Processo inválido para este usuário.")
+        escritorio = contexto_escritorio_da_request(
+            self.context["request"]
+        ).escritorio
+        if processo and processo.escritorio_id != escritorio.id:
+            raise serializers.ValidationError("Processo inválido para este escritório.")
         return processo
 
     def validate(self, attrs):
@@ -233,7 +307,9 @@ class EventoAgendaSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        request = self.context["request"]
         return EventoAgenda.objects.create(
-            usuario=self.context["request"].user,
+            usuario=request.user,
+            escritorio=contexto_escritorio_da_request(request).escritorio,
             **validated_data,
         )

@@ -1,8 +1,9 @@
 # Backend JuriPredict
 
-API Django REST Framework com autenticação JWT, isolamento de dados por usuário e
-CRUD de clientes, processos e compromissos. O dashboard e a jurimetria são
-calculados a partir dos registros do próprio escritório.
+API Django REST Framework com autenticação JWT, isolamento por escritório,
+controle de acesso por papel e trilha de auditoria. Inclui CRUD de clientes,
+processos, compromissos e membros. Dashboard e jurimetria são calculados somente
+a partir dos registros do escritório ativo.
 
 ## Execução local com SQLite
 
@@ -44,7 +45,15 @@ GET|POST     eventos/                    lista e cria compromissos
 GET|PUT|PATCH|DELETE eventos/{id}/       CRUD individual de compromisso
 GET          dashboard/                  indicadores operacionais
 GET          jurimetria/                 análise descritiva da carteira
+GET|PATCH    escritorios/{id}/           consulta e atualização do escritório
+GET          escritorios/{id}/membros/   lista da equipe
+PATCH        escritorios/{id}/membros/{membro_id}/ alteração de papel/status
+GET          auditoria/                  trilha de auditoria imutável
 ```
+
+Quando o usuário pertence a mais de um escritório, envie o UUID selecionado no
+header `X-Escritorio-ID`. A resposta de `auth/me/` informa memberships,
+escritório ativo e capacidades efetivas.
 
 CPF/CNPJ é criptografado no banco e acompanhado de um hash determinístico para
 impedir duplicidade. Um cliente com processos vinculados não pode ser excluído.
@@ -61,3 +70,18 @@ Execute a partir de `backend/juripredict`:
 
 O armazenamento de arquivos é local por padrão. Para Cloudflare R2, configure
 as credenciais do `.env` e defina `USE_R2_STORAGE=true`.
+
+## Rotação da chave de dados pessoais
+
+`FIELD_ENCRYPTION_KEY` cifra e gera o hash dos documentos dos clientes. Ela não
+pode ser alterada diretamente. Para rotacioná-la de forma transacional, defina a
+nova chave em `FIELD_ENCRYPTION_KEY`, a anterior em
+`OLD_FIELD_ENCRYPTION_KEY` e execute primeiro a validação:
+
+```powershell
+python manage.py rotate_field_encryption_key --dry-run
+python manage.py rotate_field_encryption_key
+```
+
+O comando interrompe toda a operação se qualquer registro não puder ser
+decifrado e nunca imprime o documento nem as chaves.

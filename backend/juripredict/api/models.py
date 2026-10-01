@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
 
 
 class Cliente(models.Model):
@@ -11,10 +10,15 @@ class Cliente(models.Model):
 
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="clientes",
         null=True,
         blank=True,
+    )
+    escritorio = models.ForeignKey(
+        "organizations.Escritorio",
+        on_delete=models.PROTECT,
+        related_name="clientes",
     )
     nome = models.CharField(max_length=255)
     cpf_cnpj = models.CharField(max_length=255)
@@ -29,10 +33,9 @@ class Cliente(models.Model):
         ordering = ("nome",)
         constraints = [
             models.UniqueConstraint(
-                fields=("usuario", "cpf_cnpj_hash"),
-                condition=Q(usuario__isnull=False),
-                name="cliente_documento_unico_por_usuario",
-            )
+                fields=("escritorio", "cpf_cnpj_hash"),
+                name="cliente_documento_unico_por_escritorio",
+            ),
         ]
 
     def __str__(self):
@@ -62,10 +65,15 @@ class Processo(models.Model):
 
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="processos",
         null=True,
         blank=True,
+    )
+    escritorio = models.ForeignKey(
+        "organizations.Escritorio",
+        on_delete=models.PROTECT,
+        related_name="processos",
     )
     numero_cnj = models.CharField(max_length=25)
     titulo = models.CharField(max_length=255, blank=True)
@@ -87,13 +95,17 @@ class Processo(models.Model):
 
     class Meta:
         ordering = ("-atualizado_em",)
-        indexes = [models.Index(fields=("usuario", "status"))]
+        indexes = [
+            models.Index(fields=("usuario", "status")),
+            models.Index(
+                fields=("escritorio", "status"), name="proc_esc_status_idx"
+            ),
+        ]
         constraints = [
             models.UniqueConstraint(
-                fields=("usuario", "numero_cnj"),
-                condition=Q(usuario__isnull=False),
-                name="processo_cnj_unico_por_usuario",
-            )
+                fields=("escritorio", "numero_cnj"),
+                name="processo_cnj_unico_por_escritorio",
+            ),
         ]
 
     def __str__(self):
@@ -110,7 +122,14 @@ class EventoAgenda(models.Model):
 
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        related_name="eventos_agenda",
+        null=True,
+        blank=True,
+    )
+    escritorio = models.ForeignKey(
+        "organizations.Escritorio",
+        on_delete=models.PROTECT,
         related_name="eventos_agenda",
     )
     processo = models.ForeignKey(
@@ -132,7 +151,12 @@ class EventoAgenda(models.Model):
 
     class Meta:
         ordering = ("inicio",)
-        indexes = [models.Index(fields=("usuario", "inicio"))]
+        indexes = [
+            models.Index(fields=("usuario", "inicio")),
+            models.Index(
+                fields=("escritorio", "inicio"), name="evento_esc_inicio_idx"
+            ),
+        ]
 
     def __str__(self):
         return self.titulo

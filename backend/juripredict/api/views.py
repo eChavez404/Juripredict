@@ -4,10 +4,14 @@ from datetime import date, timedelta
 from django.db.models import Count, ProtectedError, Q
 from django.utils import timezone
 from rest_framework import status, viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from auditlog.mixins import AuditoriaCrudMixin
+from organizations.context import EscritorioContextMixin
+from organizations.permissions import TemContextoEscritorio
 
 from .models import Cliente, EventoAgenda, Processo
 from .serializers import (
@@ -31,16 +35,26 @@ def inicio_mes_retroativo(referencia: date, meses: int) -> date:
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    permission_classes = [AllowAny]
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
 
 
 class UsuarioAtualAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(UsuarioSerializer(request.user).data)
+        return Response(UsuarioSerializer(request.user, context={"request": request}).data)
 
     def patch(self, request):
-        serializer = UsuarioSerializer(request.user, data=request.data, partial=True)
+        serializer = UsuarioSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
@@ -57,12 +71,13 @@ class AlterarSenhaAPIView(APIView):
         return Response({"detail": "Senha alterada com sucesso."})
 
 
-class ClienteViewSet(viewsets.ModelViewSet):
+class ClienteViewSet(AuditoriaCrudMixin, EscritorioContextMixin, viewsets.ModelViewSet):
     serializer_class = ClienteSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TemContextoEscritorio]
+    recurso_auditoria = "cliente"
 
     def get_queryset(self):
-        queryset = Cliente.objects.filter(usuario=self.request.user).annotate(
+        queryset = Cliente.objects.filter(escritorio=self.get_escritorio()).annotate(
             processos_count=Count("processos", distinct=True)
         )
         termo = self.request.query_params.get("q", "").strip()
@@ -80,12 +95,15 @@ class ClienteViewSet(viewsets.ModelViewSet):
             )
 
 
-class ProcessoViewSet(viewsets.ModelViewSet):
+class ProcessoViewSet(AuditoriaCrudMixin, EscritorioContextMixin, viewsets.ModelViewSet):
     serializer_class = ProcessoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TemContextoEscritorio]
+    recurso_auditoria = "processo"
 
     def get_queryset(self):
-        queryset = Processo.objects.filter(usuario=self.request.user).select_related("cliente")
+        queryset = Processo.objects.filter(escritorio=self.get_escritorio()).select_related(
+            "cliente"
+        )
         termo = self.request.query_params.get("q", "").strip()
         situacao = self.request.query_params.get("status", "").strip().upper()
         if termo:
@@ -99,12 +117,13 @@ class ProcessoViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class EventoAgendaViewSet(viewsets.ModelViewSet):
+class EventoAgendaViewSet(AuditoriaCrudMixin, EscritorioContextMixin, viewsets.ModelViewSet):
     serializer_class = EventoAgendaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TemContextoEscritorio]
+    recurso_auditoria = "evento_agenda"
 
     def get_queryset(self):
-        queryset = EventoAgenda.objects.filter(usuario=self.request.user).select_related(
+        queryset = EventoAgenda.objects.filter(escritorio=self.get_escritorio()).select_related(
             "processo", "processo__cliente"
         )
         inicio = self.request.query_params.get("inicio")
@@ -116,8 +135,8 @@ class EventoAgendaViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class DashboardAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class DashboardAPIView(EscritorioContextMixin, APIView):
+    permission_classes = [IsAuthenticated, TemContextoEscritorio]
 
     def get(self, request):
         hoje = timezone.localdate()
@@ -126,9 +145,10 @@ class DashboardAPIView(APIView):
         fim_semana = inicio_semana + timedelta(days=6)
         inicio_mes = hoje.replace(day=1)
 
-        processos = Processo.objects.filter(usuario=request.user).select_related("cliente")
-        clientes = Cliente.objects.filter(usuario=request.user)
-        eventos = EventoAgenda.objects.filter(usuario=request.user)
+        escritorio = self.get_escritorio()
+        processos = Processo.objects.filter(escritorio=escritorio).select_related("cliente")
+        clientes = Cliente.objects.filter(escritorio=escritorio)
+        eventos = EventoAgenda.objects.filter(escritorio=escritorio)
 
         status_processos = {
             item["status"]: item["total"]
@@ -200,11 +220,11 @@ class DashboardAPIView(APIView):
         )
 
 
-class JurimetriaAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class JurimetriaAPIView(EscritorioContextMixin, APIView):
+    permission_classes = [IsAuthenticated, TemContextoEscritorio]
 
     def get(self, request):
-        processos = Processo.objects.filter(usuario=request.user)
+        processos = Processo.objects.filter(escritorio=self.get_escritorio())
         analisados = processos.exclude(resultado="PENDENTE")
         total = analisados.count()
         favoraveis = analisados.filter(resultado__in=("FAVORAVEL", "ACORDO")).count()

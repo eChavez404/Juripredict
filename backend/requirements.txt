@@ -8,3 +8,4 @@ boto3==1.43.104
 cryptography==50.0.1
 gunicorn==26.2.0
 python-dotenv==1.2.3
+whitenoise==6.12.0

@@ -3,6 +3,7 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
@@ -40,6 +41,11 @@ if not FIELD_ENCRYPTION_KEY:
     FIELD_ENCRYPTION_KEY = SECRET_KEY
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+FLY_APP_NAME = os.getenv("FLY_APP_NAME", "").strip()
+if FLY_APP_NAME:
+    fly_hostname = f"{FLY_APP_NAME}.fly.dev"
+    if fly_hostname not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(fly_hostname)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -52,11 +58,17 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     "storages",
+    "organizations",
+    "auditlog",
     "api",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+]
+if not DEBUG:
+    MIDDLEWARE.append("whitenoise.middleware.WhiteNoiseMiddleware")
+MIDDLEWARE += [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -71,7 +83,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "frontend_dist"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -85,7 +97,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-if os.getenv("DB_HOST"):
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL:
+    database = urlparse(DATABASE_URL)
+    if database.scheme not in {"postgres", "postgresql"}:
+        raise ImproperlyConfigured("DATABASE_URL deve usar o esquema postgres ou postgresql.")
+    query = parse_qs(database.query)
+    database_options = {
+        key: values[-1]
+        for key, values in query.items()
+        if key in {"sslmode", "sslcert", "sslkey", "sslrootcert"} and values
+    }
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(database.path.lstrip("/")),
+            "USER": unquote(database.username or ""),
+            "PASSWORD": unquote(database.password or ""),
+            "HOST": database.hostname or "",
+            "PORT": str(database.port or 5432),
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
+            "DISABLE_SERVER_SIDE_CURSORS": True,
+            "OPTIONS": database_options,
+        }
+    }
+elif os.getenv("DB_HOST"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -119,18 +156,38 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+WHITENOISE_ROOT = BASE_DIR / "frontend_dist"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
+if FLY_APP_NAME:
+    fly_origin = f"https://{FLY_APP_NAME}.fly.dev"
+    if fly_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(fly_origin)
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
     ),
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
@@ -167,5 +224,7 @@ if env_bool("USE_R2_STORAGE"):
     AWS_QUERYSTRING_AUTH = True
     STORAGES = {
         "default": {"BACKEND": "storages.backends.s3.S3Storage"},
-        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        },
     }
