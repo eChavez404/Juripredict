@@ -5,7 +5,7 @@ from django.test import TransactionTestCase
 
 class EscritorioBackfillMigrationTests(TransactionTestCase):
     migrate_from = [("api", "0003_add_escritorio_nullable")]
-    migrate_to = [("api", "0006_office_owned_data")]
+    migrate_to = [("api", "0007_harden_supabase_access")]
 
     def setUp(self):
         super().setUp()
