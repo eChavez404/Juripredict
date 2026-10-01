@@ -1,31 +1,87 @@
-# backend/
+# Backend JuriPredict
 
-Camada 3: Django + Django REST Framework expondo agregações sobre a tabela que a
-camada 1 produz.
+API Django REST Framework com autenticação JWT, isolamento por escritório,
+controle de acesso por papel e trilha de auditoria. Inclui CRUD de clientes,
+processos, compromissos e membros. Dashboard e jurimetria são calculados somente
+a partir dos registros do escritório ativo.
 
-**Ainda não iniciada, e isso é decisão, não atraso.** A API da primeira versão é
-consulta agregada sobre `casos` — escrevê-la antes de o dataset existir significa
-fixar endpoints contra um schema que ainda vai mudar, e medir cobertura contra
-uma base vazia.
+## Execução local com SQLite
 
-## Pré-condição para começar
+Na raiz do repositório, em PowerShell:
 
-Camada 1 tendo produzido dado **verificado**, não só código que roda:
-
-- corpus real coletado e processado (`processar.py` sobre `dataset/data/normalized`);
-- gold set anotado e concordância medida por classe (`gold_set.py comparar`);
-- `montar_dataset.py` fechando sem quebrar o invariante de uma linha por
-  `(numero_cnj, pedido)`;
-- cobertura da fonte medida por vara e ano (`auditoria_cobertura.py`).
-
-## O que a API precisa carregar
-
-Nenhuma taxa é devolvida sozinha. Toda resposta de agregação traz `n`, intervalo
-de confiança e cobertura da fonte naquele recorte, e abaixo do piso de amostra
-devolve o motivo da abstenção em vez do número (invariante I3).
-
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+Copy-Item backend\juripredict\.env.example backend\juripredict\.env
+python backend\juripredict\manage.py migrate
+python backend\juripredict\manage.py runserver
 ```
-backend/
-├── Dockerfile
-└── juripredict/        projeto Django
+
+Para usar SQLite, mantenha `DB_HOST` comentado no `.env`. Para PostgreSQL,
+descomente a variável e informe as credenciais correspondentes.
+
+Antes do primeiro acesso, crie o usuário administrador. Se já existir um usuário
+e for necessário trocar a senha:
+
+```powershell
+python backend\juripredict\manage.py createsuperuser
+python backend\juripredict\manage.py changepassword <usuario>
 ```
+
+## Recursos da API
+
+Todos os endpoints abaixo usam o prefixo `/api/v1/`:
+
+```text
+POST         auth/token/                autenticação por usuário ou e-mail
+POST         auth/token/refresh/        renovação do JWT
+GET|PATCH    auth/me/                   perfil do usuário
+POST         auth/password/             alteração de senha
+GET|POST     clientes/                   lista e cria clientes
+GET|PUT|PATCH|DELETE clientes/{id}/      CRUD individual de cliente
+GET|POST     processos/                  lista e cria processos
+GET|PUT|PATCH|DELETE processos/{id}/     CRUD individual de processo
+GET|POST     eventos/                    lista e cria compromissos
+GET|PUT|PATCH|DELETE eventos/{id}/       CRUD individual de compromisso
+GET          dashboard/                  indicadores operacionais
+GET          jurimetria/                 análise descritiva da carteira
+GET|PATCH    escritorios/{id}/           consulta e atualização do escritório
+GET          escritorios/{id}/membros/   lista da equipe
+PATCH        escritorios/{id}/membros/{membro_id}/ alteração de papel/status
+GET          auditoria/                  trilha de auditoria imutável
+```
+
+Quando o usuário pertence a mais de um escritório, envie o UUID selecionado no
+header `X-Escritorio-ID`. A resposta de `auth/me/` informa memberships,
+escritório ativo e capacidades efetivas.
+
+CPF/CNPJ é criptografado no banco e acompanhado de um hash determinístico para
+impedir duplicidade. Um cliente com processos vinculados não pode ser excluído.
+
+## Validação
+
+Execute a partir de `backend/juripredict`:
+
+```powershell
+..\..\.venv\Scripts\python.exe manage.py check
+..\..\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+..\..\.venv\Scripts\python.exe manage.py test
+```
+
+O armazenamento de arquivos é local por padrão. Para Cloudflare R2, configure
+as credenciais do `.env` e defina `USE_R2_STORAGE=true`.
+
+## Rotação da chave de dados pessoais
+
+`FIELD_ENCRYPTION_KEY` cifra e gera o hash dos documentos dos clientes. Ela não
+pode ser alterada diretamente. Para rotacioná-la de forma transacional, defina a
+nova chave em `FIELD_ENCRYPTION_KEY`, a anterior em
+`OLD_FIELD_ENCRYPTION_KEY` e execute primeiro a validação:
+
+```powershell
+python manage.py rotate_field_encryption_key --dry-run
+python manage.py rotate_field_encryption_key
+```
+
+O comando interrompe toda a operação se qualquer registro não puder ser
+decifrado e nunca imprime o documento nem as chaves.

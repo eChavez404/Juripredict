@@ -1,20 +1,8 @@
-# =====================================================================
-# JuriPredict — o que NAO entra no repositorio
-#
-# Tres motivos, nesta ordem de gravidade:
-#   1. dado pessoal   sentenca traz nome de parte e laudo de pericia (I6)
-#   2. segredo        chave de API
-#   3. derivado       o que um comando reproduz nao precisa de historico
-# =====================================================================
 
-# ------------------------------------------------------------- 1. DADO PESSOAL
-# O corpus bruto e tudo que deriva dele com texto dentro.
 dataset/data/
 dados/
 dado/
 
-# Bancos: o SQLite do pipeline carrega o texto integral das sentencas.
-# `*.db.antes-da-revisao` e afins nao casam com `*.db`, por isso o `*.db.*`.
 *.db
 *.db.*
 *.sqlite
@@ -24,18 +12,17 @@ dado/
 *.db-wal
 *.db-shm
 
-# Desfaz a pseudonimizacao do exportador: nunca sai da maquina.
 *_NAO_PUBLICAR.csv
 
-# Pacotes trazidos para analise (zip de dataset, export de outra maquina).
 *.zip
 *.tar
 *.tar.gz
 *.tgz
 *.7z
 *.rar
+*.backup
+*.dump
 
-# ----------------------------------------------------------------- 2. SEGREDOS
 .env
 .env.*
 !.env.example
@@ -44,38 +31,22 @@ dado/
 credentials.json
 service-account*.json
 
-# ---------------------------------------------------------------- 3. DERIVADOS
-# Produtos de lote. A PASTA e versionada (README + .gitkeep); o conteudo, nao:
-# sao artefatos de uma execucao datada, reproduziveis por um comando.
-# publicacao/ e a PASTA DE ENTREGA: o conteudo sobe, porque e o que o
-# avaliador precisa ver. Os arquivos aqui ja passaram pelo exportador - sem
-# texto de sentenca, sem numero de processo, sem nome de parte; `id` e hash
-# truncado, `unidade` e pseudonimo, e data reduzida a ano e trimestre.
-#
-# Nao se usa `publicacao/*` com excecoes: essa regra exclui os DIRETORIOS
-# TED1/ e TED2/, e o git nao reinclui arquivo cujo diretorio-pai foi excluido -
-# as linhas `!publicacao/...` nunca chegam a ser avaliadas. Por isso aqui se
-# bloqueia arquivo a arquivo, nao a pasta inteira.
-
-# Desfaz a pseudonimizacao: em qualquer subpasta, nunca sobe.
 publicacao/**/_mapa_unidades_NAO_PUBLICAR.csv
 publicacao/_mapa_unidades_NAO_PUBLICAR.csv
 
 finetune/*
 !finetune/.gitkeep
 !finetune/README.md
-# So os metadados. Os .jsonl carregam texto de sentenca e nome de parte.
+
 !finetune/manifesto.json
 !finetune/DATASET_CARD.md
 
-# Saidas que scripts gravam no diretorio de codigo quando rodados de outro cwd.
 dataset/pipeline/*.json
 dataset/pipeline/*.csv
 dataset/pipeline/*.jsonl
 dataset/collector/*.json
 dataset/collector/*.csv
 
-# ------------------------------------------------------------------- ambiente
 .venv/
 venv/
 env/
@@ -95,14 +66,12 @@ htmlcov/
 .tox/
 .ipynb_checkpoints/
 
-# ------------------------------------------- camada 3 (backend Django, previsto)
 staticfiles/
 mediafiles/
 media/
 *.log
 celerybeat-schedule
 
-# --------------------------------------------- camada 4 (frontend React, previsto)
 node_modules/
 frontend/dist/
 frontend/.vite/
@@ -113,12 +82,8 @@ yarn-error.log*
 pnpm-debug.log*
 *.local
 
-# ------------------------------------------------------------------ containers
-# docker-compose.override.yml e configuracao de maquina, nao do projeto.
 docker-compose.override.yml
 
-# --------------------------------------------------------- sistema e editores
-# OneDrive espalha desktop.ini pelas pastas sincronizadas.
 desktop.ini
 Thumbs.db
 ehthumbs.db
@@ -132,16 +97,9 @@ $RECYCLE.BIN/
 *.bak
 *.tmp
 
-# ----------------------------------------------- configuracao local do Claude
-# Atencao: isto tambem deixa .claude/skills/base/SKILL.md fora do historico, e
-# esse arquivo carrega as decisoes metodologicas fechadas do projeto. Manter
-# assim enquanto o remoto for publico; em repositorio privado, vale versionar.
 .claude/
 
-# ---------------------------------------------------------------- documentos
-# Monografia e material de entrega: binarios que mudam a cada salvamento e
-# podem carregar trechos de sentenca colados. Para versionar um especifico:
-#     git add -f <arquivo>
+
 *.docx
 *.doc
 *.odt
@@ -149,15 +107,14 @@ $RECYCLE.BIN/
 *.pptx
 ~$*
 
-# ------------------------------------------------- entrega para avaliacao
-# Um unico dataset fica exposto no repositorio: a versao publicavel.
-# 413 linhas, sem texto de sentenca, sem numero de processo, sem nome de
-# parte. `id` e hash truncado e `unidade` e pseudonimo estavel.
-#
-# O de trabalho (dataset/data/juripredict.csv) carrega o CNJ e fica fora,
-# assim como os JSONL de fine-tuning, que levam o texto integral.
 finetune/*
 !finetune/.gitkeep
 !finetune/README.md
 docs/*
 !docs/README.md
+
+.agents
+
+# Documentacao operacional privada
+DEPLOYMENT.md
+SECURITY.md
