@@ -7,9 +7,9 @@ fazer é deferido em 58% das vezes — e não em 80%, como você imaginava?
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-orange)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
-![Django](https://img.shields.io/badge/django-5.x-092E20)
+![Django](https://img.shields.io/badge/django-6.x-092E20)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-16-336791)
-![React](https://img.shields.io/badge/react-18-61DAFB)
+![React](https://img.shields.io/badge/react-19-61DAFB)
 
 ---
 
@@ -102,8 +102,8 @@ dataset/
     schema.sql
   tests/            21 testes, sem rede
 publicacao/         **o dataset publicado** — CSV + cartão de descrição
-backend/            aplicação Django e API REST — camada 3, não iniciada
-frontend/           aplicação React — camada 4, não iniciada
+backend/            aplicação Django e API REST com CRUD e autenticação JWT
+frontend/           aplicação React integrada à API
 ```
 
 ### O que está no repositório e o que fica local
@@ -122,18 +122,31 @@ o pipeline reproduz o dataset a partir dele.
 
 ## Rodando localmente
 
-```bash
+```powershell
 git clone <url-do-repositorio>
 cd juripredict
 
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-cp .env.example .env        # configure as chaves de API
+pip install -r backend\requirements.txt
+Copy-Item backend\juripredict\.env.example backend\juripredict\.env
+python backend\juripredict\manage.py migrate
 ```
 
-A aplicação Django ainda não existe — ver `backend/README.md` para a
-pré-condição. Hoje o que roda é a camada de dados.
+As instruções específicas da API e da interface estão em `backend/README.md` e
+`frontend/README.md`. Rode as migrações antes do primeiro acesso. Para subir a
+aplicação completa com PostgreSQL:
+
+```powershell
+Copy-Item .env.example .env
+# Preencha as três chaves da seção Docker Compose antes de continuar.
+docker compose up --build
+```
+
+O frontend fica em `http://localhost` e a API em `http://localhost:8000/api/v1/`.
+O procedimento de publicação, backup e restauração no Fly.io está em
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 **Coleta** (a partir de `dataset/`):
 
@@ -238,7 +251,7 @@ redefinido antes de o número significar alguma coisa.
 | Gold set (anotação humana) | **vazio — bloqueia a medição de erro** |
 | Auditoria de cobertura | amostra coletada, denominador em revisão |
 | Extração de variáveis de conteúdo | previsto, depende do gold set |
-| API e interface de consulta | não iniciadas |
+| API e interface de gestão | CRUD integrado de clientes, processos, agenda e indicadores |
 | Modelo preditivo | condicionado à medição de erro |
 
 **O que o dataset sustenta hoje:** desenvolvimento do pipeline e jurimetria
