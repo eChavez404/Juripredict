@@ -114,3 +114,6 @@ docs/*
 !docs/README.md
 
 .agents
+
+# Documentacao operacional privada
+/DEPLOYMENT.md
