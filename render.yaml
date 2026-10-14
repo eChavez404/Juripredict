@@ -28,6 +28,10 @@ services:
         sync: false
       - key: DJANGO_DEBUG
         value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: juripredict.onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://juripredict.onrender.com
       - key: CORS_ALLOW_ALL_ORIGINS
         value: "false"
       - key: DB_CONN_MAX_AGE
