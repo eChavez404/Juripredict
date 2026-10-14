@@ -116,6 +116,7 @@ const Clientes = () => {
         eyebrow="Relacionamento"
         title="Clientes"
         description="Cadastre os contatos e acompanhe a carteira de cada cliente."
+        backTo="/"
         action={(
           <button className="button button--primary" type="button" onClick={openCreate}>
             <Plus size={17} /> Novo cliente

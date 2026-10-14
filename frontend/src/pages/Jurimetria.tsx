@@ -34,7 +34,7 @@ const Jurimetria = () => {
 
   return (
     <div className="page">
-      <PageHeader eyebrow="Inteligência jurídica" title="Jurimetria estratégica" description="Indicadores calculados a partir dos resultados cadastrados na sua própria carteira." />
+      <PageHeader eyebrow="Inteligência jurídica" title="Jurimetria estratégica" description="Indicadores calculados a partir dos resultados cadastrados na sua própria carteira." backTo="/" />
 
       <section className="grid jurimetria-metrics" aria-label="Indicadores de jurimetria">
         <AnalyticsKpi icon={BarChart3} value={`${data.taxa_favoravel}%`} label="Resultados favoráveis ou acordos" color={chartColors.green} />

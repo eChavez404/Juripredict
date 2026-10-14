@@ -5,6 +5,8 @@ import Feedback from '../components/ui/Feedback';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 import SearchField from '../components/ui/SearchField';
+import ViewToggle from '../components/ui/ViewToggle';
+import useViewPreference from '../hooks/useViewPreference';
 import { getApiError } from '../services/api';
 import { clienteService, processoService } from '../services/juripredict';
 import type { Cliente, Processo, ProcessoArea, ProcessoResultado, ProcessoStatus } from '../types';
@@ -64,6 +66,7 @@ const Processos = () => {
   const [editing, setEditing] = useState<Processo | null>(null);
   const [deleting, setDeleting] = useState<Processo | null>(null);
   const [form, setForm] = useState<ProcessoForm>(emptyForm);
+  const [view, setView] = useViewPreference('juripredict:processos-view');
 
   const loadData = useCallback(async () => {
     try {
@@ -158,12 +161,23 @@ const Processos = () => {
     }
   };
 
+  const renderActions = (processo: Processo) => (
+    <div className="table-actions">
+      {processo.arquivo_peticao_inicial_url && (
+        <a className="action-button" href={processo.arquivo_peticao_inicial_url} target="_blank" rel="noreferrer" aria-label={`Abrir documento do processo ${processo.numero_cnj}`}><LinkIcon size={15} /></a>
+      )}
+      <button className="action-button" type="button" aria-label={`Editar processo ${processo.numero_cnj}`} onClick={() => openEdit(processo)}><Pencil size={15} /></button>
+      <button className="action-button action-button--danger" type="button" aria-label={`Excluir processo ${processo.numero_cnj}`} onClick={() => setDeleting(processo)}><Trash2 size={15} /></button>
+    </div>
+  );
+
   return (
     <div className="page">
       <PageHeader
         eyebrow="Operação jurídica"
         title="Processos"
         description="Cadastre casos, acompanhe status, resultados e documentos."
+        backTo="/"
         action={(
           <button className="button button--primary" type="button" onClick={openCreate} disabled={clientes.length === 0}>
             <Plus size={17} /> Novo processo
@@ -184,43 +198,70 @@ const Processos = () => {
             </button>
           ))}
         </div>
+        <ViewToggle value={view} onChange={setView} label="Visualização dos processos" />
       </section>
 
-      <section className="panel table-panel" aria-label="Lista de processos">
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr><th>Nº CNJ</th><th>Cliente</th><th>Vara / comarca</th><th>Parte contrária</th><th>Status</th><th>Cadastro</th><th>Ações</th></tr>
-            </thead>
-            <tbody>
-              {loading && <tr><td colSpan={7} className="empty-state">Carregando processos...</td></tr>}
-              {!loading && filtrados.map((processo) => (
-                <tr key={processo.id}>
-                  <td>
-                    <span className="table-primary"><FileText size={15} /> {processo.numero_cnj}</span>
-                    {processo.titulo && <span className="table-secondary">{processo.titulo}</span>}
-                  </td>
-                  <td>{processo.cliente_nome}</td>
-                  <td><span className="table-secondary">{processo.vara}<br />{processo.comarca}</span></td>
-                  <td>{processo.parte_contraria}</td>
-                  <td><span className={`status-badge status-badge--${statusTone[processo.status]}`}>{processo.status}</span></td>
-                  <td><span className="table-secondary">{formatDate(processo.criado_em)}</span></td>
-                  <td>
-                    <div className="table-actions">
-                      {processo.arquivo_peticao_inicial_url && (
-                        <a className="action-button" href={processo.arquivo_peticao_inicial_url} target="_blank" rel="noreferrer" aria-label="Abrir documento"><LinkIcon size={15} /></a>
-                      )}
-                      <button className="action-button" type="button" aria-label="Editar processo" onClick={() => openEdit(processo)}><Pencil size={15} /></button>
-                      <button className="action-button action-button--danger" type="button" aria-label="Excluir processo" onClick={() => setDeleting(processo)}><Trash2 size={15} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && filtrados.length === 0 && <tr><td colSpan={7} className="empty-state">Nenhum processo encontrado.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {view === 'table' ? (
+        <section className="panel table-panel" aria-label="Lista de processos em tabela">
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr><th>Nº CNJ</th><th>Cliente</th><th>Vara / comarca</th><th>Parte contrária</th><th>Status</th><th>Cadastro</th><th>Ações</th></tr>
+              </thead>
+              <tbody>
+                {loading && <tr><td colSpan={7} className="empty-state">Carregando processos...</td></tr>}
+                {!loading && filtrados.map((processo) => (
+                  <tr key={processo.id}>
+                    <td>
+                      <span className="table-primary"><FileText size={15} /> {processo.numero_cnj}</span>
+                      {processo.titulo && <span className="table-secondary">{processo.titulo}</span>}
+                    </td>
+                    <td>{processo.cliente_nome}</td>
+                    <td><span className="table-secondary">{processo.vara}<br />{processo.comarca}</span></td>
+                    <td>{processo.parte_contraria}</td>
+                    <td><span className={`status-badge status-badge--${statusTone[processo.status]}`}>{processo.status}</span></td>
+                    <td><span className="table-secondary">{formatDate(processo.criado_em)}</span></td>
+                    <td>{renderActions(processo)}</td>
+                  </tr>
+                ))}
+                {!loading && filtrados.length === 0 && <tr><td colSpan={7} className="empty-state">Nenhum processo encontrado.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : loading ? (
+        <div className="panel empty-state" role="status">Carregando processos...</div>
+      ) : filtrados.length === 0 ? (
+        <div className="panel empty-state">Nenhum processo encontrado.</div>
+      ) : (
+        <section className="collection-grid" aria-label="Lista de processos em cards">
+          {filtrados.map((processo) => (
+            <article className="panel collection-card" key={processo.id}>
+              <header className="collection-card__header">
+                <span className="collection-card__icon"><FileText size={20} aria-hidden="true" /></span>
+                <div className="collection-card__identity">
+                  <span className="collection-card__eyebrow">Processo</span>
+                  <h2>{processo.numero_cnj}</h2>
+                  {processo.titulo && <p>{processo.titulo}</p>}
+                </div>
+                <span className={`status-badge status-badge--${statusTone[processo.status]}`}>{processo.status}</span>
+              </header>
+              <dl className="collection-card__details">
+                <div><dt>Cliente</dt><dd>{processo.cliente_nome}</dd></div>
+                <div><dt>Parte contrária</dt><dd>{processo.parte_contraria}</dd></div>
+                <div><dt>Vara</dt><dd>{processo.vara}</dd></div>
+                <div><dt>Comarca</dt><dd>{processo.comarca}</dd></div>
+                <div><dt>Área</dt><dd>{processo.area}</dd></div>
+                <div><dt>Cadastro</dt><dd><time dateTime={processo.criado_em}>{formatDate(processo.criado_em)}</time></dd></div>
+              </dl>
+              <footer className="collection-card__footer">
+                <span>Gerenciar processo</span>
+                {renderActions(processo)}
+              </footer>
+            </article>
+          ))}
+        </section>
+      )}
 
       <Modal open={modalOpen} title={editing ? 'Editar processo' : 'Novo processo'} description="Preencha as informações principais do caso." size="large" onClose={() => !busy && setModalOpen(false)}>
         <form className="entity-form" onSubmit={handleSubmit}>

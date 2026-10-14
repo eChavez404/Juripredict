@@ -51,7 +51,7 @@ const Configuracoes = () => {
 
   return (
     <div className="page">
-      <PageHeader eyebrow="Conta" title="Configurações" description="Atualize seus dados de acesso e informações de perfil." />
+      <PageHeader eyebrow="Conta" title="Configurações" description="Atualize seus dados de acesso e informações de perfil." backTo="/" />
       <SettingsNav />
       <section className="settings-grid">
         <article className="panel panel--padded settings-card">

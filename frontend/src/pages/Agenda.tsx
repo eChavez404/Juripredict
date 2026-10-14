@@ -194,6 +194,7 @@ const Agenda = () => {
         eyebrow="Organização"
         title="Agenda e prazos"
         description="Gerencie compromissos, audiências e vencimentos do escritório."
+        backTo="/"
         action={<button className="button button--primary" type="button" onClick={openCreate}><Plus size={17} /> Novo compromisso</button>}
       />
 
