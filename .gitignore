@@ -98,6 +98,7 @@ $RECYCLE.BIN/
 *.tmp
 
 .claude/
+.codex/
 
 
 *.docx
