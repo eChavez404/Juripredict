@@ -1,3 +1,0 @@
-[mcp_servers.supabase]
-url = "https://mcp.supabase.com/mcp?project_ref=ngmfryheqxybigwltrcm&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
-default_tools_approval_mode = "writes"
