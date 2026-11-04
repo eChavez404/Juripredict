@@ -54,6 +54,7 @@ de São Paulo e do Rio de Janeiro.
 | `docs/` | Documento técnico das TEDs 01 a 03 (seções 1 a 5, 6 e 7, e 8 a 10, respectivamente) |
 | `data/raw/` e `data/processed/` | Base original e base tratada; só a estrutura é versionada (ver `data/README.md`) |
 | `notebooks/TED01` a `notebooks/TED03` | Um notebook por etapa, que executa o script da etapa e mostra os resultados |
+| `notebooks/JuriPredict_Colab.ipynb` | Notebook autocontido para o Google Colab: baixa a base e reproduz as 11 figuras do documento |
 | `src/` | Scripts das etapas, testes da limpeza e dependências |
 | `resultados/` | Métricas, gráficos e metadados da base tratada, sem o texto das movimentações |
 
@@ -62,6 +63,9 @@ arquivos somam 658 MB e os textos trazem nomes de partes e advogados. O script d
 TED 01 baixa os arquivos diretamente da fonte, sem credencial, e confere o SHA-256
 da versão usada. Em `resultados/` ficam as métricas, os gráficos e os metadados da
 base tratada, todos sem o texto das movimentações.
+
+**Tecnologias:** Python 3.12, pandas, NumPy, SciPy, scikit-learn, matplotlib, joblib,
+pytest e Jupyter. As versões exatas estão em `src/requirements.txt`.
 
 ```bash
 python -m venv .venv-dados
