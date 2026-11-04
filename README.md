@@ -32,6 +32,54 @@ O recorte inicial é o **adicional de insalubridade no TRT da 16ª Região**
 > É a versão pseudonimizada: sem texto de sentença, sem número de processo e sem
 > nome de parte.
 
+## Big Data e Ciência de Dados (TEDs 01 a 03)
+
+Na disciplina de Big Data e Ciência de Dados, a equipe substituiu o conjunto próprio
+de sentenças por uma base pública e passou a tratar um problema que ela sustenta:
+**classificar a situação atual de um processo (arquivado, ativo ou suspenso) a partir
+das suas movimentações**. O conjunto anterior continua em `dataset/` e `publicacao/`
+como registro histórico. O documento técnico, que reúne as três etapas e explica o
+motivo da troca, está em `docs/JuriPredict_Documento_Tecnico_BigData.pdf`.
+
+**Equipe:** Elias Chaves Sousa, Marcos Antonio Cirqueira, Kauan Leite Dos Santos e
+Pedro Vitor Rocha Do Val.
+
+**Base:** [Brazilian Legal Proceedings](https://www.kaggle.com/datasets/felipepolo/brazilian-legal-proceedings),
+de Felipe Maia Polo, versão 2 (14/05/2021). São 6.449 processos rotulados por
+advogados e cerca de 2,9 milhões de movimentações sem rótulo, das justiças estaduais
+de São Paulo e do Rio de Janeiro.
+
+| Pasta | Conteúdo |
+|---|---|
+| `docs/` | Documento técnico das TEDs 01 a 03 (seções 1 a 5, 6 e 7, e 8 a 10, respectivamente) |
+| `data/raw/` e `data/processed/` | Base original e base tratada; só a estrutura é versionada (ver `data/README.md`) |
+| `notebooks/TED01` a `notebooks/TED03` | Um notebook por etapa, que executa o script da etapa e mostra os resultados |
+| `src/` | Scripts das etapas, testes da limpeza e dependências |
+| `resultados/` | Métricas, gráficos e metadados da base tratada, sem o texto das movimentações |
+
+Os dados não ficam no repositório: a licença declarada na fonte é "Unknown", os
+arquivos somam 658 MB e os textos trazem nomes de partes e advogados. O script da
+TED 01 baixa os arquivos diretamente da fonte, sem credencial, e confere o SHA-256
+da versão usada. Em `resultados/` ficam as métricas, os gráficos e os metadados da
+base tratada, todos sem o texto das movimentações.
+
+```bash
+python -m venv .venv-dados
+.venv-dados\Scripts\activate          # Windows
+pip install -r src/requirements.txt
+
+python src/ted01_baixar_e_inspecionar.py   # download, integridade e estrutura
+python src/ted02_limpar_e_explorar.py      # limpeza, estatísticas e gráficos
+python src/ted03_modelar.py                # experimentos, teste e generalização
+python -m pytest src/test_limpeza.py       # regras de limpeza
+```
+
+Os dados vão para `data/raw/` e `data/processed/`, cujo conteúdo fica fora do Git. Para
+usar outra pasta, defina a variável de ambiente `DADOS_DIR`. Os notebooks executam os
+mesmos scripts, na mesma ordem; para abri-los, instale também o Jupyter
+(`pip install notebook`). Em Windows, mantenha o ambiente virtual em um caminho curto:
+o scikit-learn falha ao importar quando o caminho passa de 260 caracteres.
+
 ## Princípios
 
 O projeto assume três compromissos que moldam a arquitetura inteira:

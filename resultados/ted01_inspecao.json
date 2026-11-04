@@ -1,0 +1,41 @@
+{
+  "versao_kaggle": 2,
+  "sha256": {
+    "labeled.json": "653013a741af31ad389f44458bc0bf5fd4c78a380646556d0772dee47846c63a",
+    "unlabeled.json": "0451bc19da272cd849a25e510d44ad1735f42a51436514eff114bba7fece3042"
+  },
+  "bytes": {
+    "labeled.json": 127627741,
+    "unlabeled.json": 530110583
+  },
+  "rotulado": {
+    "processos": 6449,
+    "movimentacoes": 545843,
+    "atributos_por_processo": [
+      "label",
+      "texts"
+    ],
+    "rotulos": {
+      "H:Arquivado": 3040,
+      "H:Ativo": 2917,
+      "H:Suspenso": 492
+    },
+    "movimentacoes_por_processo": {
+      "min": 1,
+      "mediana": 60,
+      "media": 84.64,
+      "max": 2659
+    },
+    "caracteres_por_movimentacao": {
+      "min": 5,
+      "mediana": 81,
+      "media": 188.89,
+      "max": 160093
+    }
+  },
+  "sem_rotulo": {
+    "movimentacoes": 2904255,
+    "textos_distintos": 1305090,
+    "vazios": 22
+  }
+}

@@ -1,0 +1,557 @@
+{
+  "processos_brutos": 6449,
+  "duplicados_removidos": 86,
+  "processos_finais": 6363,
+  "movimentacoes_finais": 539286,
+  "problemas": {
+    "com_nbsp_ou_controle": 6621,
+    "acima_do_limite": 5116,
+    "com_ano_invalido": 736,
+    "tknome": 459511,
+    "tkcnj": 7810,
+    "tkdoc": 1549,
+    "tkoab": 254533,
+    "tkemail": 317,
+    "tkvalor": 5395,
+    "tkdata": 193053,
+    "tknum": 807894,
+    "vazias_apos_limpeza": 0,
+    "repetidas_em_sequencia": 11322
+  },
+  "palavras_no_lexico_de_nomes": 51337,
+  "classes": {
+    "arquivado": 3005,
+    "ativo": 2868,
+    "suspenso": 490
+  },
+  "origem_x_classe": {
+    "arquivado": {
+      "RJ (provável)": 328,
+      "SP (provável)": 2677
+    },
+    "ativo": {
+      "RJ (provável)": 183,
+      "SP (provável)": 2685
+    },
+    "suspenso": {
+      "RJ (provável)": 0,
+      "SP (provável)": 490
+    }
+  },
+  "cramer_v_origem_classe": 0.117,
+  "p_origem_classe": 1.1563846583849438e-19,
+  "sem_ano_ref": 585,
+  "ano_ref_contagem": {
+    "2003.0": 1,
+    "2005.0": 1,
+    "2006.0": 1,
+    "2007.0": 1,
+    "2009.0": 7,
+    "2010.0": 6,
+    "2011.0": 12,
+    "2012.0": 13,
+    "2013.0": 44,
+    "2014.0": 103,
+    "2015.0": 536,
+    "2016.0": 929,
+    "2017.0": 1233,
+    "2018.0": 1508,
+    "2019.0": 1366,
+    "2020.0": 13,
+    "2021.0": 4
+  },
+  "processos_com_menos_de_5_mov": 14,
+  "grupos_janela": {
+    "grupos": 6307,
+    "grupos_repetidos": 27,
+    "processos_em_grupos_repetidos": 83,
+    "grupos_com_rotulos_divergentes": 2,
+    "processos_em_grupos_divergentes": 4
+  },
+  "descritivas_por_classe": {
+    "n_mov|count": {
+      "arquivado": 3005.0,
+      "ativo": 2868.0,
+      "suspenso": 490.0
+    },
+    "n_mov|mean": {
+      "arquivado": 72.1,
+      "ativo": 94.7,
+      "suspenso": 104.0
+    },
+    "n_mov|std": {
+      "arquivado": 60.8,
+      "ativo": 115.9,
+      "suspenso": 79.9
+    },
+    "n_mov|min": {
+      "arquivado": 1.0,
+      "ativo": 1.0,
+      "suspenso": 10.0
+    },
+    "n_mov|25%": {
+      "arquivado": 32.0,
+      "ativo": 39.0,
+      "suspenso": 49.2
+    },
+    "n_mov|50%": {
+      "arquivado": 54.0,
+      "ativo": 63.0,
+      "suspenso": 81.0
+    },
+    "n_mov|75%": {
+      "arquivado": 94.0,
+      "ativo": 121.0,
+      "suspenso": 138.5
+    },
+    "n_mov|max": {
+      "arquivado": 800.0,
+      "ativo": 2659.0,
+      "suspenso": 702.0
+    },
+    "chars_total|count": {
+      "arquivado": 3005.0,
+      "ativo": 2868.0,
+      "suspenso": 490.0
+    },
+    "chars_total|mean": {
+      "arquivado": 10204.6,
+      "ativo": 13898.8,
+      "suspenso": 14491.0
+    },
+    "chars_total|std": {
+      "arquivado": 7938.4,
+      "ativo": 17933.2,
+      "suspenso": 10864.5
+    },
+    "chars_total|min": {
+      "arquivado": 84.0,
+      "ativo": 77.0,
+      "suspenso": 1398.0
+    },
+    "chars_total|25%": {
+      "arquivado": 4732.0,
+      "ativo": 5813.0,
+      "suspenso": 7273.2
+    },
+    "chars_total|50%": {
+      "arquivado": 8147.0,
+      "ativo": 9547.5,
+      "suspenso": 11529.0
+    },
+    "chars_total|75%": {
+      "arquivado": 13560.0,
+      "ativo": 16888.5,
+      "suspenso": 18821.5
+    },
+    "chars_total|max": {
+      "arquivado": 92072.0,
+      "ativo": 503574.0,
+      "suspenso": 120321.0
+    },
+    "chars_medio|count": {
+      "arquivado": 3005.0,
+      "ativo": 2868.0,
+      "suspenso": 490.0
+    },
+    "chars_medio|mean": {
+      "arquivado": 150.5,
+      "ativo": 154.6,
+      "suspenso": 148.6
+    },
+    "chars_medio|std": {
+      "arquivado": 47.3,
+      "ativo": 52.7,
+      "suspenso": 42.6
+    },
+    "chars_medio|min": {
+      "arquivado": 28.0,
+      "ativo": 25.1,
+      "suspenso": 62.7
+    },
+    "chars_medio|25%": {
+      "arquivado": 119.8,
+      "ativo": 121.5,
+      "suspenso": 119.4
+    },
+    "chars_medio|50%": {
+      "arquivado": 146.2,
+      "ativo": 148.9,
+      "suspenso": 141.1
+    },
+    "chars_medio|75%": {
+      "arquivado": 176.6,
+      "ativo": 181.8,
+      "suspenso": 171.4
+    },
+    "chars_medio|max": {
+      "arquivado": 544.8,
+      "ativo": 563.6,
+      "suspenso": 365.7
+    },
+    "ano_ref|count": {
+      "arquivado": 2656.0,
+      "ativo": 2648.0,
+      "suspenso": 474.0
+    },
+    "ano_ref|mean": {
+      "arquivado": 2016.7,
+      "ativo": 2017.8,
+      "suspenso": 2017.2
+    },
+    "ano_ref|std": {
+      "arquivado": 1.3,
+      "ativo": 1.6,
+      "suspenso": 1.2
+    },
+    "ano_ref|min": {
+      "arquivado": 2003.0,
+      "ativo": 2009.0,
+      "suspenso": 2014.0
+    },
+    "ano_ref|25%": {
+      "arquivado": 2016.0,
+      "ativo": 2017.0,
+      "suspenso": 2016.0
+    },
+    "ano_ref|50%": {
+      "arquivado": 2017.0,
+      "ativo": 2018.0,
+      "suspenso": 2017.0
+    },
+    "ano_ref|75%": {
+      "arquivado": 2018.0,
+      "ativo": 2019.0,
+      "suspenso": 2018.0
+    },
+    "ano_ref|max": {
+      "arquivado": 2020.0,
+      "ativo": 2021.0,
+      "suspenso": 2020.0
+    }
+  },
+  "descritivas_gerais": {
+    "n_mov": {
+      "count": 6363.0,
+      "mean": 84.8,
+      "std": 91.8,
+      "min": 1.0,
+      "25%": 36.0,
+      "50%": 60.0,
+      "75%": 110.0,
+      "max": 2659.0
+    },
+    "chars_total": {
+      "count": 6363.0,
+      "mean": 12199.7,
+      "std": 13687.3,
+      "min": 77.0,
+      "25%": 5332.0,
+      "50%": 8985.0,
+      "75%": 15291.5,
+      "max": 503574.0
+    },
+    "chars_medio": {
+      "count": 6363.0,
+      "mean": 152.2,
+      "std": 49.5,
+      "min": 25.1,
+      "25%": 120.5,
+      "50%": 147.2,
+      "75%": 178.5,
+      "max": 563.6
+    },
+    "ano_ref": {
+      "count": 5778.0,
+      "mean": 2017.3,
+      "std": 1.5,
+      "min": 2003.0,
+      "25%": 2016.0,
+      "50%": 2018.0,
+      "75%": 2018.0,
+      "max": 2021.0
+    }
+  },
+  "percentis_n_mov": {
+    "0.01": 7.0,
+    "0.25": 36.0,
+    "0.5": 60.0,
+    "0.75": 110.0,
+    "0.95": 221.0,
+    "0.99": 355.3800000000001
+  },
+  "kruskal_wallis": {
+    "n_mov": {
+      "H": 152.1,
+      "p": 9.311061738628848e-34,
+      "eta2": 0.0236
+    },
+    "chars_total": {
+      "H": 157.2,
+      "p": 7.18332418430199e-35,
+      "eta2": 0.0244
+    },
+    "chars_medio": {
+      "H": 11.8,
+      "p": 0.00272674563164407,
+      "eta2": 0.0015
+    }
+  },
+  "spearman": {
+    "n_mov": {
+      "n_mov": 1.0,
+      "chars_total": 0.917,
+      "chars_medio": -0.196,
+      "ano_ref": 0.241
+    },
+    "chars_total": {
+      "n_mov": 0.917,
+      "chars_total": 1.0,
+      "chars_medio": 0.16,
+      "ano_ref": 0.273
+    },
+    "chars_medio": {
+      "n_mov": -0.196,
+      "chars_total": 0.16,
+      "chars_medio": 1.0,
+      "ano_ref": 0.073
+    },
+    "ano_ref": {
+      "n_mov": 0.241,
+      "chars_total": 0.273,
+      "chars_medio": 0.073,
+      "ano_ref": 1.0
+    }
+  },
+  "anos_x_classe": {
+    "2013": {
+      "arquivado": 13,
+      "ativo": 31,
+      "suspenso": 0
+    },
+    "2014": {
+      "arquivado": 19,
+      "ativo": 81,
+      "suspenso": 3
+    },
+    "2015": {
+      "arquivado": 380,
+      "ativo": 121,
+      "suspenso": 35
+    },
+    "2016": {
+      "arquivado": 659,
+      "ativo": 175,
+      "suspenso": 95
+    },
+    "2017": {
+      "arquivado": 807,
+      "ativo": 294,
+      "suspenso": 132
+    },
+    "2018": {
+      "arquivado": 642,
+      "ativo": 714,
+      "suspenso": 152
+    },
+    "2019": {
+      "arquivado": 117,
+      "ativo": 1194,
+      "suspenso": 55
+    }
+  },
+  "expressoes_ultima_mov": [
+    {
+      "expressao": "arquivado definitivamente",
+      "n": 1154,
+      "arquivado": 1152,
+      "ativo": 2,
+      "suspenso": 0
+    },
+    {
+      "expressao": "baixa definitiva",
+      "n": 165,
+      "arquivado": 164,
+      "ativo": 1,
+      "suspenso": 0
+    },
+    {
+      "expressao": "trânsito em julgado",
+      "n": 367,
+      "arquivado": 331,
+      "ativo": 29,
+      "suspenso": 7
+    },
+    {
+      "expressao": "arquivado/arquivamento provisório",
+      "n": 297,
+      "arquivado": 21,
+      "ativo": 0,
+      "suspenso": 276
+    },
+    {
+      "expressao": "suspensão do prazo",
+      "n": 291,
+      "arquivado": 18,
+      "ativo": 267,
+      "suspenso": 6
+    },
+    {
+      "expressao": "sentença",
+      "n": 288,
+      "arquivado": 124,
+      "ativo": 129,
+      "suspenso": 35
+    },
+    {
+      "expressao": "conclusos",
+      "n": 155,
+      "arquivado": 5,
+      "ativo": 147,
+      "suspenso": 3
+    },
+    {
+      "expressao": "certidão de publicação",
+      "n": 663,
+      "arquivado": 126,
+      "ativo": 498,
+      "suspenso": 39
+    }
+  ],
+  "termos": {
+    "arquivado": [
+      {
+        "termo": "definitivamente",
+        "chi2": 1994.7
+      },
+      {
+        "termo": "arquivado",
+        "chi2": 1184.6
+      },
+      {
+        "termo": "baixa",
+        "chi2": 1132.6
+      },
+      {
+        "termo": "trânsito",
+        "chi2": 801.9
+      },
+      {
+        "termo": "julgado",
+        "chi2": 769.8
+      },
+      {
+        "termo": "partes",
+        "chi2": 511.0
+      },
+      {
+        "termo": "definitiva",
+        "chi2": 417.9
+      },
+      {
+        "termo": "às",
+        "chi2": 374.3
+      },
+      {
+        "termo": "arquivamento",
+        "chi2": 343.2
+      },
+      {
+        "termo": "arquivo",
+        "chi2": 324.3
+      }
+    ],
+    "ativo": [
+      {
+        "termo": "tribunal",
+        "chi2": 585.5
+      },
+      {
+        "termo": "contrarrazões",
+        "chi2": 430.9
+      },
+      {
+        "termo": "protocolo",
+        "chi2": 420.7
+      },
+      {
+        "termo": "petição",
+        "chi2": 383.6
+      },
+      {
+        "termo": "wfpa",
+        "chi2": 381.5
+      },
+      {
+        "termo": "apelação",
+        "chi2": 346.5
+      },
+      {
+        "termo": "justiça",
+        "chi2": 340.3
+      },
+      {
+        "termo": "colégio",
+        "chi2": 329.8
+      },
+      {
+        "termo": "juntada",
+        "chi2": 321.0
+      },
+      {
+        "termo": "tipo",
+        "chi2": 277.0
+      }
+    ],
+    "suspenso": [
+      {
+        "termo": "provisoriamente",
+        "chi2": 3554.0
+      },
+      {
+        "termo": "frustrada",
+        "chi2": 509.8
+      },
+      {
+        "termo": "provocação",
+        "chi2": 367.9
+      },
+      {
+        "termo": "provisório",
+        "chi2": 253.1
+      },
+      {
+        "termo": "arquivado",
+        "chi2": 233.7
+      },
+      {
+        "termo": "arquivo",
+        "chi2": 208.0
+      },
+      {
+        "termo": "aguarde",
+        "chi2": 141.0
+      },
+      {
+        "termo": "bens",
+        "chi2": 85.0
+      },
+      {
+        "termo": "exequente",
+        "chi2": 82.3
+      },
+      {
+        "termo": "penhoráveis",
+        "chi2": 81.7
+      }
+    ]
+  },
+  "sem_rotulo": {
+    "movimentacoes": 2904255,
+    "textos_distintos_brutos": 1305090,
+    "textos_distintos_limpos": 679620,
+    "vazios": 22,
+    "fatia_dos_100_textos_mais_comuns": 0.2348,
+    "fatia_rotulada_presente_no_sem_rotulo": 0.669
+  }
+}

@@ -2,6 +2,11 @@
 dataset/data/
 dados/
 dado/
+# Dados das TEDs de Big Data: só a estrutura de pastas e o README entram no Git.
+/data/**
+!/data/**/
+!/data/README.md
+!/data/**/.gitkeep
 
 *.db
 *.db.*
@@ -48,6 +53,7 @@ dataset/collector/*.json
 dataset/collector/*.csv
 
 .venv/
+.venv-dados/
 venv/
 env/
 ENV/
@@ -113,6 +119,7 @@ finetune/*
 !finetune/README.md
 docs/*
 !docs/README.md
+!docs/JuriPredict_Documento_Tecnico_BigData.pdf
 
 .agents
 

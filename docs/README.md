@@ -15,6 +15,18 @@ Para versionar um deles apesar da regra:
 git add -f docs/TED01_BIGDATA_JuriPredict.docx
 ```
 
+## Big Data e Ciência de Dados: TEDs 01 a 03
+
+`JuriPredict_Documento_Tecnico_BigData.pdf` reúne as três etapas e **é versionado**
+(exceção no `.gitignore`).
+
+| Etapa | Seções |
+|---|---|
+| TED 01: seleção da base, problema e necessidades de dados | 1 a 5 |
+| TED 02: limpeza, preparação e análise exploratória | 6 e 7 |
+| TED 03: modelagem, discussão e decisões | 8 a 10 |
+| Repositório, dados e reprodução | 11 |
+
 ## Os números do documento saem do pipeline
 
 A tabela da seção 6.2 e a divisão da 6.4 são produzidas por:
