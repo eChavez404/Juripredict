@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowRight, CalendarClock, Scale, Sparkles, TrendingUp, Users } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import PermissionGate from '../components/auth/PermissionGate';
 import ChartTooltip from '../components/ui/ChartTooltip';
 import Feedback from '../components/ui/Feedback';
 import MetricCard from '../components/ui/MetricCard';
 import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/auth';
+import { CAPABILITIES } from '../features/escritorios/types';
 import { getApiError } from '../services/api';
 import { dashboardService, jurimetriaService } from '../services/juripredict';
 import type { DashboardData, JurimetriaData } from '../types';
@@ -19,16 +21,17 @@ const Dashboard = () => {
   const [analytics, setAnalytics] = useState<JurimetriaData | null>(null);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasCapability } = useAuth();
+  const veJurimetria = hasCapability(CAPABILITIES.jurimetriaVisualizar);
 
   useEffect(() => {
-    Promise.all([dashboardService.get(), jurimetriaService.get()])
+    Promise.all([dashboardService.get(), veJurimetria ? jurimetriaService.get() : Promise.resolve(null)])
       .then(([dashboard, jurimetria]) => {
         setData(dashboard);
         setAnalytics(jurimetria);
       })
       .catch((requestError) => setError(getApiError(requestError)));
-  }, []);
+  }, [veJurimetria]);
 
   if (error) return <div className="page"><Feedback type="error">{error}</Feedback></div>;
   if (!data) return <div className="page"><div className="panel empty-state">Carregando indicadores...</div></div>;
@@ -88,12 +91,14 @@ const Dashboard = () => {
           </div>
         </article>
 
+        <PermissionGate capability={CAPABILITIES.jurimetriaVisualizar}>
         <article className="panel panel--padded panel--accent insight-card">
           <div className="section-heading"><div><h2 className="insight-card__title"><Sparkles size={18} /> Resumo jurimétrico</h2><p>Calculado com a sua carteira</p></div></div>
           <p className="insight-card__copy">{analytics?.insight ?? 'Cadastre resultados nos processos para gerar análises.'}</p>
-          <div className="recommendation"><strong>Base analisada</strong>{analytics?.total_analisados ?? 0} processos concluídos · {analytics?.taxa_favoravel ?? 0}% favoráveis ou acordos.</div>
+          <div className="recommendation"><strong>Base analisada</strong>{analytics?.total_analisados ?? 0} processos concluídos · {analytics?.taxa_favoravel == null ? 'amostra ainda insuficiente para uma taxa.' : `${analytics.taxa_favoravel}% favoráveis ou acordos.`}</div>
           <button className="button button--primary" type="button" onClick={() => navigate('/jurimetria')}><TrendingUp size={16} /> Abrir análise completa</button>
         </article>
+        </PermissionGate>
       </section>
     </div>
   );

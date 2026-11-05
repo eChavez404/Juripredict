@@ -76,9 +76,28 @@ jobs:
       - name: Verificar migrations pendentes
         run: python manage.py makemigrations --check --dry-run
       - name: Executar testes de negócio e segurança
-        run: python manage.py test api.tests api.test_key_rotation organizations auditlog --verbosity=2
+        run: python manage.py test api.tests api.test_key_rotation organizations auditlog accounts api.test_lembretes api.test_validators api.test_estatistica api.test_andamentos api.test_documentos api.test_papeis api.test_openapi api.test_regressoes api.test_prazos api.test_jurimetria_recortes --verbosity=2
       - name: Validar migração dos dados existentes
         run: python manage.py test api.test_migrations --verbosity=2
+
+  mcp:
+    name: Servidor MCP · testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mcp_server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: mcp_server/requirements.txt
+      - name: Instalar dependências
+        run: python -m pip install -r requirements.txt
+      - name: Executar testes
+        run: python -m unittest -q
 
   frontend:
     name: Frontend · React

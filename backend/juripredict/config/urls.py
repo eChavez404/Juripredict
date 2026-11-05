@@ -20,6 +20,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 
 def health_check(_request):
@@ -28,11 +29,17 @@ def health_check(_request):
 urlpatterns = [
     path('health/', health_check, name='health-check'),
     path('admin/', admin.site.urls),
+    path('api/v1/', include('accounts.urls')),
     path('api/v1/', include('api.urls')),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Só em desenvolvimento: em produção, a referência é o backend/openapi.yaml.
+    urlpatterns += [
+        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    ]
 
 frontend_index = settings.BASE_DIR / "frontend_dist" / "index.html"
 if frontend_index.exists():

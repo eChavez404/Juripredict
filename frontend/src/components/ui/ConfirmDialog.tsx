@@ -5,11 +5,22 @@ type ConfirmDialogProps = {
   title: string;
   message: string;
   busy?: boolean;
+  confirmLabel?: string;
+  busyLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
 };
 
-const ConfirmDialog = ({ open, title, message, busy, onCancel, onConfirm }: ConfirmDialogProps) => (
+const ConfirmDialog = ({
+  open,
+  title,
+  message,
+  busy,
+  confirmLabel = 'Excluir',
+  busyLabel = 'Excluindo...',
+  onCancel,
+  onConfirm,
+}: ConfirmDialogProps) => (
   <Modal open={open} title={title} onClose={onCancel}>
     <p className="confirm-copy">{message}</p>
     <div className="form-actions">
@@ -17,7 +28,7 @@ const ConfirmDialog = ({ open, title, message, busy, onCancel, onConfirm }: Conf
         Cancelar
       </button>
       <button className="button button--danger" type="button" onClick={onConfirm} disabled={busy}>
-        {busy ? 'Excluindo...' : 'Excluir'}
+        {busy ? busyLabel : confirmLabel}
       </button>
     </div>
   </Modal>

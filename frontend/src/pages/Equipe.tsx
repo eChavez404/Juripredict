@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, ShieldCheck, UserCheck, UserX, Users } from 'lucide-react';
 import ProtectedContent from '../components/auth/ProtectedContent';
+import ConvitesPanel from '../components/equipe/ConvitesPanel';
 import PermissionGate from '../components/auth/PermissionGate';
 import SettingsNav from '../components/settings/SettingsNav';
 import Feedback from '../components/ui/Feedback';
@@ -105,6 +106,11 @@ const EquipeContent = () => {
   return (
     <>
       {error && <Feedback type="error">{error}</Feedback>}
+      {activeEscritorio && (
+        <PermissionGate capability={CAPABILITIES.membrosGerenciar}>
+          <ConvitesPanel escritorioId={activeEscritorio.id} />
+        </PermissionGate>
+      )}
       <section className={`panel${view === 'table' ? ' table-panel' : ''}`} aria-labelledby="team-list-title">
         <div className="section-heading team-heading">
           <div>

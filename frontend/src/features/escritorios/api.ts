@@ -1,6 +1,6 @@
 import api from '../../services/api';
 import type { Usuario } from '../../types';
-import type { MembroResumo, PapelMembro, StatusMembro } from './types';
+import type { Convite, MembroResumo, PapelMembro, StatusMembro } from './types';
 import { normalizeSessao } from './sessionAdapter';
 
 type CollectionResponse<T> = T[] | { results?: T[] };
@@ -34,6 +34,18 @@ export const equipeService = {
       payload,
     );
     return normalizeMembro(response.data);
+  },
+};
+
+export const conviteService = {
+  list: async (escritorioId: string) => collectionItems(
+    (await api.get<CollectionResponse<Convite>>(`/escritorios/${escritorioId}/convites/`)).data,
+  ),
+  create: async (escritorioId: string, payload: { email: string; papel: PapelMembro }) => (
+    await api.post<Convite>(`/escritorios/${escritorioId}/convites/`, payload)
+  ).data,
+  revoke: async (escritorioId: string, conviteId: string) => {
+    await api.delete(`/escritorios/${escritorioId}/convites/${conviteId}/`);
   },
 };
 

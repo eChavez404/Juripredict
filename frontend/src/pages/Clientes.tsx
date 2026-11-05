@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Building2, Mail, Pencil, Phone, Plus, Trash2, User } from 'lucide-react';
+import PermissionGate from '../components/auth/PermissionGate';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Feedback from '../components/ui/Feedback';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 import SearchField from '../components/ui/SearchField';
+import { useAuth } from '../contexts/auth';
+import { CAPABILITIES } from '../features/escritorios/types';
 import { getApiError } from '../services/api';
 import { clienteService } from '../services/juripredict';
 import type { Cliente, ClientePayload } from '../types';
@@ -25,6 +28,7 @@ const maskDocument = (document: string) => {
 };
 
 const Clientes = () => {
+  const { hasCapability } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
@@ -149,7 +153,9 @@ const Clientes = () => {
                   </div>
                   <div className="card-actions">
                     <button className="action-button" type="button" aria-label={`Editar ${cliente.nome}`} onClick={() => openEdit(cliente)}><Pencil size={15} /></button>
-                    <button className="action-button action-button--danger" type="button" aria-label={`Excluir ${cliente.nome}`} onClick={() => setDeleting(cliente)}><Trash2 size={15} /></button>
+                    <PermissionGate capability={CAPABILITIES.clientesExcluir}>
+                      <button className="action-button action-button--danger" type="button" aria-label={`Excluir ${cliente.nome}`} onClick={() => setDeleting(cliente)}><Trash2 size={15} /></button>
+                    </PermissionGate>
                   </div>
                 </div>
 
@@ -186,7 +192,13 @@ const Clientes = () => {
             </label>
             <label className="form-field">
               <span>CPF/CNPJ</span>
-              <input value={form.cpf_cnpj} onChange={(event) => setForm({ ...form, cpf_cnpj: event.target.value })} maxLength={20} required />
+              <input
+                value={form.cpf_cnpj}
+                onChange={(event) => setForm({ ...form, cpf_cnpj: event.target.value })}
+                maxLength={20}
+                readOnly={Boolean(editing) && !hasCapability(CAPABILITIES.documentoClienteVisualizar)}
+                required
+              />
             </label>
             <label className="form-field">
               <span>E-mail</span>

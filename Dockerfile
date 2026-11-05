@@ -35,6 +35,14 @@ RUN DJANGO_DEBUG=true \
     FIELD_ENCRYPTION_KEY=collectstatic-build-only \
     python manage.py collectstatic --noinput
 
+# O processo web não precisa de root. Se alguém explorar uma falha na aplicação,
+# o estrago fica limitado a um usuário sem privilégios. A pasta de mídia é a
+# única que a aplicação grava (uploads, quando o R2 está desligado).
+RUN useradd --system --uid 10001 --no-create-home app \
+    && mkdir -p /app/backend/juripredict/media \
+    && chown -R app:app /app/backend/juripredict/media
+USER app
+
 EXPOSE 8080
 
 CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers ${WEB_CONCURRENCY:-2} --timeout 60 config.wsgi:application"]

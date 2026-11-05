@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell,
   CalendarDays,
   FileText,
   LayoutDashboard,
@@ -13,14 +12,17 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/auth';
 import EscritorioSelector from '../features/escritorios/EscritorioSelector';
+import { CAPABILITIES } from '../features/escritorios/types';
+import EmailVerificationBanner from './auth/EmailVerificationBanner';
+import CentralPendencias from './layout/CentralPendencias';
 import Brand from './ui/Brand';
 
-const navItems = [
+const navItems: { label: string; icon: typeof Users; path: string; capability?: string }[] = [
   { label: 'Visão geral', icon: LayoutDashboard, path: '/' },
   { label: 'Processos', icon: FileText, path: '/processos' },
   { label: 'Clientes', icon: Users, path: '/clientes' },
   { label: 'Agenda e prazos', icon: CalendarDays, path: '/agenda' },
-  { label: 'Jurimetria', icon: TrendingUp, path: '/jurimetria' },
+  { label: 'Jurimetria', icon: TrendingUp, path: '/jurimetria', capability: CAPABILITIES.jurimetriaVisualizar },
 ];
 
 const pageLabels: Record<string, string> = {
@@ -36,7 +38,7 @@ const pageLabels: Record<string, string> = {
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, hasCapability } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -74,7 +76,7 @@ const Layout = () => {
         <span className="sidebar__section-label">Menu principal</span>
 
         <nav className="sidebar__nav">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !item.capability || hasCapability(item.capability)).map((item) => {
             const isActive = item.path === '/'
               ? location.pathname === '/'
               : location.pathname.startsWith(item.path);
@@ -129,9 +131,7 @@ const Layout = () => {
 
           <div className="topbar__actions">
             <EscritorioSelector />
-            <button className="icon-button" type="button" aria-label="Próximos compromissos" onClick={() => navigate('/agenda')}>
-              <Bell size={18} />
-            </button>
+            <CentralPendencias />
             <button className="profile-chip" type="button" aria-label="Abrir configurações" onClick={() => navigate('/configuracoes')}>
               <span className="profile-chip__avatar">{initials}</span>
               <span className="profile-chip__copy">
@@ -142,6 +142,7 @@ const Layout = () => {
           </div>
         </header>
 
+        <EmailVerificationBanner />
         <Outlet />
       </main>
     </div>

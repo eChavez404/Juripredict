@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ElementType, type FormEvent } from 'react';
-import { AlertTriangle, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, Calculator, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Pencil, Plus, Trash2 } from 'lucide-react';
+import CalculadoraPrazoModal from '../components/agenda/CalculadoraPrazoModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Feedback from '../components/ui/Feedback';
 import Modal from '../components/ui/Modal';
@@ -61,8 +63,17 @@ const emptyForm = (): EventoForm => ({
   concluido: false,
 });
 
+// `?data=AAAA-MM-DD` abre a semana daquele dia (vem da central de pendências).
+const semanaDoParametro = (valor: string | null) => {
+  const data = valor ? new Date(`${valor}T12:00:00`) : new Date();
+  return startOfWeek(Number.isNaN(data.getTime()) ? new Date() : data);
+};
+
 const Agenda = () => {
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [searchParams] = useSearchParams();
+  const dataNaUrl = searchParams.get('data');
+  const [weekStart, setWeekStart] = useState(() => semanaDoParametro(dataNaUrl));
+  const [calculando, setCalculando] = useState(false);
   const [eventos, setEventos] = useState<EventoAgenda[]>([]);
   const [processos, setProcessos] = useState<Processo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +110,10 @@ const Agenda = () => {
   }, [weekStart]);
 
   useEffect(() => { void loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (dataNaUrl) setWeekStart(semanaDoParametro(dataNaUrl));
+  }, [dataNaUrl]);
 
   const openCreate = () => {
     const initial = emptyForm();
@@ -195,7 +210,12 @@ const Agenda = () => {
         title="Agenda e prazos"
         description="Gerencie compromissos, audiências e vencimentos do escritório."
         backTo="/"
-        action={<button className="button button--primary" type="button" onClick={openCreate}><Plus size={17} /> Novo compromisso</button>}
+        action={(
+          <>
+            <button className="button button--secondary" type="button" onClick={() => setCalculando(true)}><Calculator size={17} /> Calcular prazo</button>
+            <button className="button button--primary" type="button" onClick={openCreate}><Plus size={17} /> Novo compromisso</button>
+          </>
+        )}
       />
 
       {error && <Feedback type="error">{error}</Feedback>}
@@ -261,6 +281,8 @@ const Agenda = () => {
           <div className="form-actions"><button className="button button--secondary" type="button" onClick={() => setModalOpen(false)} disabled={busy}>Cancelar</button><button className="button button--primary" type="submit" disabled={busy}>{busy ? 'Salvando...' : 'Salvar compromisso'}</button></div>
         </form>
       </Modal>
+
+      <CalculadoraPrazoModal open={calculando} processos={processos} onClose={() => setCalculando(false)} onCriado={() => void loadData()} />
 
       <ConfirmDialog open={Boolean(deleting)} title="Excluir compromisso" message={`Deseja excluir “${deleting?.titulo ?? ''}”?`} busy={busy} onCancel={() => setDeleting(null)} onConfirm={handleDelete} />
     </div>

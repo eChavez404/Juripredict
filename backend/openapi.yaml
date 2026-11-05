@@ -1,0 +1,3377 @@
+openapi: 3.0.3
+info:
+  title: JuriPredict API
+  version: 1.0.0
+  description: |-
+    API REST do JuriPredict: gestão de clientes, processos e agenda, com jurimetria da carteira, isolamento por escritório e controle de acesso por papel.
+
+    Erros são devolvidos em JSON: 400 (dados inválidos), 401 (credencial ausente, inválida ou expirada), 403 (papel sem a capacidade exigida), 404 (recurso inexistente ou de outro escritório), 409 (exclusão de cliente com processos), 429 (limite de requisições) e 503 (DataJud sem chave configurada).
+paths:
+  /api/v1/auditoria/:
+    get:
+      operationId: auditoria_list
+      tags:
+      - auditoria
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoAuditoria'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/auditoria/{id}/:
+    get:
+      operationId: auditoria_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: Um string UUID que identifica este evento auditoria.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - auditoria
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoAuditoria'
+          description: ''
+  /api/v1/auth/convites/aceitar/:
+    post:
+      operationId: auth_convites_aceitar_create
+      description: Endpoint sem login. O limite de requisições é por escopo, não o
+        global.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AceitarConviteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AceitarConviteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AceitarConviteRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sessao'
+          description: ''
+  /api/v1/auth/email/confirmar/:
+    post:
+      operationId: auth_email_confirmar_create
+      description: Endpoint sem login. O limite de requisições é por escopo, não o
+        global.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmarEmailRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfirmarEmailRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfirmarEmailRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/auth/email/reenviar/:
+    post:
+      operationId: auth_email_reenviar_create
+      tags:
+      - auth
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: |-
+        Revoga o refresh token no servidor.
+
+        Não exige access token: quem sai por ele ter expirado também precisa
+        conseguir encerrar a sessão. Resposta igual para token válido ou não.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+    patch:
+      operationId: auth_me_partial_update
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUsuarioRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUsuarioRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUsuarioRequest'
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/auth/me/excluir/:
+    post:
+      operationId: auth_me_excluir_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExcluirContaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExcluirContaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExcluirContaRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/me/exportar/:
+    get:
+      operationId: auth_me_exportar_retrieve
+      tags:
+      - auth
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Cópia dos dados do titular.
+          description: ''
+  /api/v1/auth/password/:
+    post:
+      operationId: auth_password_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlterarSenhaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AlterarSenhaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AlterarSenhaRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/auth/password/reset/:
+    post:
+      operationId: auth_password_reset_create
+      description: Endpoint sem login. O limite de requisições é por escopo, não o
+        global.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitarResetSenhaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SolicitarResetSenhaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SolicitarResetSenhaRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/auth/password/reset/confirm/:
+    post:
+      operationId: auth_password_reset_confirm_create
+      description: Endpoint sem login. O limite de requisições é por escopo, não o
+        global.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmarResetSenhaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfirmarResetSenhaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfirmarResetSenhaRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: auth_register_create
+      description: Endpoint sem login. O limite de requisições é por escopo, não o
+        global.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistroRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegistroRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegistroRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sessao'
+          description: ''
+  /api/v1/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sessao'
+          description: ''
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/auth/tokens/:
+    get:
+      operationId: auth_tokens_list
+      description: |-
+        Gerenciar tokens exige uma sessão de pessoa: um token de API nunca emite nem
+        revoga tokens, nem os lista.
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TokenApi'
+          description: ''
+    post:
+      operationId: auth_tokens_create
+      description: |-
+        Gerenciar tokens exige uma sessão de pessoa: um token de API nunca emite nem
+        revoga tokens, nem os lista.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarTokenApiRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CriarTokenApiRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CriarTokenApiRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenApiCriado'
+          description: ''
+  /api/v1/auth/tokens/{token_id}/:
+    delete:
+      operationId: auth_tokens_destroy
+      description: |-
+        Gerenciar tokens exige uma sessão de pessoa: um token de API nunca emite nem
+        revoga tokens, nem os lista.
+      parameters:
+      - in: path
+        name: token_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/clientes/:
+    get:
+      operationId: clientes_list
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Busca por nome ou e-mail.
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - clientes
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cliente'
+          description: ''
+    post:
+      operationId: clientes_create
+      tags:
+      - clientes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/clientes/{id}/:
+    get:
+      operationId: clientes_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este cliente.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - clientes
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          description: ''
+    put:
+      operationId: clientes_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este cliente.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - clientes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClienteRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          description: ''
+    patch:
+      operationId: clientes_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este cliente.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - clientes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClienteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClienteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClienteRequest'
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+          description: ''
+    delete:
+      operationId: clientes_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este cliente.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - clientes
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/dashboard/:
+    get:
+      operationId: dashboard_retrieve
+      tags:
+      - dashboard
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResposta'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/escritorios/:
+    get:
+      operationId: escritorios_list
+      tags:
+      - escritorios
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Escritorio'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/escritorios/{escritorio_id}/convites/:
+    get:
+      operationId: escritorios_convites_list
+      parameters:
+      - in: path
+        name: escritorio_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConviteEscritorio'
+          description: ''
+    post:
+      operationId: escritorios_convites_create
+      parameters:
+      - in: path
+        name: escritorio_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConviteEscritorioRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConviteEscritorioRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConviteEscritorioRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConviteEscritorio'
+          description: ''
+  /api/v1/escritorios/{escritorio_id}/convites/{id}/:
+    delete:
+      operationId: escritorios_convites_destroy
+      parameters:
+      - in: path
+        name: escritorio_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/escritorios/{escritorio_id}/membros/:
+    get:
+      operationId: escritorios_membros_list
+      parameters:
+      - in: path
+        name: escritorio_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MembroEscritorio'
+          description: ''
+  /api/v1/escritorios/{escritorio_id}/membros/{id}/:
+    get:
+      operationId: escritorios_membros_retrieve
+      parameters:
+      - in: path
+        name: escritorio_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembroEscritorio'
+          description: ''
+    patch:
+      operationId: escritorios_membros_partial_update
+      parameters:
+      - in: path
+        name: escritorio_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMembroEscritorioRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMembroEscritorioRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMembroEscritorioRequest'
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembroEscritorio'
+          description: ''
+  /api/v1/escritorios/{id}/:
+    get:
+      operationId: escritorios_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: Um string UUID que identifica este escritorio.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Escritorio'
+          description: ''
+    patch:
+      operationId: escritorios_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: Um string UUID que identifica este escritorio.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - escritorios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEscritorioRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEscritorioRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEscritorioRequest'
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Escritorio'
+          description: ''
+  /api/v1/eventos/:
+    get:
+      operationId: eventos_list
+      parameters:
+      - in: query
+        name: fim
+        schema:
+          type: string
+          format: date
+        description: Data final (AAAA-MM-DD).
+      - in: query
+        name: inicio
+        schema:
+          type: string
+          format: date
+        description: Data inicial (AAAA-MM-DD).
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - eventos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventoAgenda'
+          description: ''
+    post:
+      operationId: eventos_create
+      tags:
+      - eventos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventoAgendaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventoAgendaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventoAgendaRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoAgenda'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/eventos/{id}/:
+    get:
+      operationId: eventos_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este evento agenda.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - eventos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoAgenda'
+          description: ''
+    put:
+      operationId: eventos_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este evento agenda.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - eventos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventoAgendaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventoAgendaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventoAgendaRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoAgenda'
+          description: ''
+    patch:
+      operationId: eventos_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este evento agenda.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - eventos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventoAgendaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEventoAgendaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEventoAgendaRequest'
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoAgenda'
+          description: ''
+    delete:
+      operationId: eventos_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este evento agenda.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - eventos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/jurimetria/:
+    get:
+      operationId: jurimetria_retrieve
+      parameters:
+      - in: query
+        name: ano
+        schema:
+          type: string
+        description: Ano de distribuição, ou sem_data.
+      - in: query
+        name: area
+        schema:
+          type: string
+          enum:
+          - CIVEL
+          - CRIMINAL
+          - OUTRO
+          - PREVIDENCIARIO
+          - TRABALHISTA
+          - TRIBUTARIO
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - jurimetria
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JurimetriaResposta'
+          description: ''
+  /api/v1/jurimetria/exportar/:
+    get:
+      operationId: jurimetria_exportar_retrieve
+      parameters:
+      - in: query
+        name: ano
+        schema:
+          type: string
+        description: Ano de distribuição, ou sem_data.
+      - in: query
+        name: area
+        schema:
+          type: string
+          enum:
+          - CIVEL
+          - CRIMINAL
+          - OUTRO
+          - PREVIDENCIARIO
+          - TRABALHISTA
+          - TRIBUTARIO
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - jurimetria
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/jurimetria/processos/:
+    get:
+      operationId: jurimetria_processos_retrieve
+      description: 'Os processos por trás de um número: nenhuma taxa fica sem como
+        ser conferida.'
+      parameters:
+      - in: query
+        name: ano
+        schema:
+          type: string
+        description: Ano de distribuição, ou sem_data.
+      - in: query
+        name: area
+        schema:
+          type: string
+          enum:
+          - CIVEL
+          - CRIMINAL
+          - OUTRO
+          - PREVIDENCIARIO
+          - TRABALHISTA
+          - TRIBUTARIO
+      - in: query
+        name: resultado
+        schema:
+          type: string
+          enum:
+          - ACORDO
+          - DESFAVORAVEL
+          - FAVORAVEL
+      - in: query
+        name: vara
+        schema:
+          type: string
+        description: Vara exatamente como cadastrada.
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - jurimetria
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JurimetriaProcessosResposta'
+          description: ''
+  /api/v1/pendencias/:
+    get:
+      operationId: pendencias_retrieve
+      description: 'O que precisa de atenção agora, calculado na hora: não há estado
+        a manter em dia.'
+      tags:
+      - pendencias
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendenciasResposta'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/prazos/calcular/:
+    get:
+      operationId: prazos_calcular_retrieve
+      description: 'Só calcula: não lê nem grava dado de escritório. Quem grava é
+        a criação do compromisso.'
+      parameters:
+      - in: query
+        name: area
+        schema:
+          enum:
+          - TRABALHISTA
+          - CIVEL
+          - PREVIDENCIARIO
+          - TRIBUTARIO
+          - CRIMINAL
+          - OUTRO
+          type: string
+          default: TRABALHISTA
+          minLength: 1
+        description: |-
+          * `TRABALHISTA` - Trabalhista
+          * `CIVEL` - Cível
+          * `PREVIDENCIARIO` - Previdenciário
+          * `TRIBUTARIO` - Tributário
+          * `CRIMINAL` - Criminal
+          * `OUTRO` - Outro
+      - in: query
+        name: data_base
+        schema:
+          type: string
+          format: date
+        description: Data da ciência, ou da disponibilização no diário eletrônico.
+        required: true
+      - in: query
+        name: dias
+        schema:
+          type: integer
+          maximum: 365
+          minimum: 1
+        required: true
+      - in: query
+        name: suspensoes
+        schema:
+          type: array
+          items:
+            type: string
+            format: date
+          maxItems: 120
+        description: Dias sem expediente conferidos no calendário do tribunal.
+      - in: query
+        name: tipo
+        schema:
+          enum:
+          - INTIMACAO
+          - PUBLICACAO_DIARIO
+          type: string
+          default: INTIMACAO
+          minLength: 1
+        description: |-
+          * `INTIMACAO` - Ciência direta do ato
+          * `PUBLICACAO_DIARIO` - Disponibilização no diário eletrônico
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - prazos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrazoCalculoResposta'
+          description: ''
+  /api/v1/processos/:
+    get:
+      operationId: processos_list
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Busca por CNJ, cliente ou parte contrária.
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - ARQUIVADO
+          - ATIVO
+          - SUSPENSO
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Processo'
+          description: ''
+    post:
+      operationId: processos_create
+      tags:
+      - processos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessoRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Processo'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/processos/{id}/:
+    get:
+      operationId: processos_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Processo'
+          description: ''
+    put:
+      operationId: processos_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessoRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Processo'
+          description: ''
+    patch:
+      operationId: processos_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessoRequest'
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Processo'
+          description: ''
+    delete:
+      operationId: processos_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/processos/{id}/andamentos/:
+    get:
+      operationId: processos_andamentos_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AndamentosResposta'
+          description: ''
+  /api/v1/processos/{id}/andamentos/sincronizar/:
+    post:
+      operationId: processos_andamentos_sincronizar_create
+      description: Lê o DataJud agora. Cada leitura é uma chamada externa, por isso
+        o limite.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SincronizacaoResposta'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/processos/{id}/documentos/:
+    get:
+      operationId: processos_documentos_list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentoProcesso'
+          description: ''
+    post:
+      operationId: processos_documentos_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentoProcessoRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentoProcesso'
+          description: ''
+  /api/v1/processos/{id}/documentos/{documento_id}/:
+    delete:
+      operationId: processos_documentos_destroy
+      parameters:
+      - in: path
+        name: documento_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este processo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - processos
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    AceitarConviteRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+        senha:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        nome:
+          type: string
+          maxLength: 150
+        aceite_termos:
+          type: boolean
+          default: false
+      required:
+      - senha
+      - token
+    AlterarSenhaRequest:
+      type: object
+      properties:
+        senha_atual:
+          type: string
+          writeOnly: true
+          minLength: 1
+        nova_senha:
+          type: string
+          writeOnly: true
+          minLength: 8
+      required:
+      - nova_senha
+      - senha_atual
+    Andamento:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        data_hora:
+          type: string
+          format: date-time
+          readOnly: true
+        codigo:
+          type: integer
+          readOnly: true
+          nullable: true
+        nome:
+          type: string
+          readOnly: true
+        complemento:
+          type: string
+          readOnly: true
+      required:
+      - codigo
+      - complemento
+      - data_hora
+      - id
+      - nome
+    AndamentoRecente:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        processo:
+          type: integer
+          readOnly: true
+        processo_numero:
+          type: string
+          readOnly: true
+        data_hora:
+          type: string
+          format: date-time
+          readOnly: true
+        nome:
+          type: string
+          readOnly: true
+      required:
+      - data_hora
+      - id
+      - nome
+      - processo
+      - processo_numero
+    AndamentosResposta:
+      type: object
+      properties:
+        sincronizado_em:
+          type: string
+          format: date-time
+          nullable: true
+        andamentos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Andamento'
+      required:
+      - andamentos
+      - sincronizado_em
+    AreaEnum:
+      enum:
+      - TRABALHISTA
+      - CIVEL
+      - PREVIDENCIARIO
+      - TRIBUTARIO
+      - CRIMINAL
+      - OUTRO
+      type: string
+      description: |-
+        * `TRABALHISTA` - Trabalhista
+        * `CIVEL` - Cível
+        * `PREVIDENCIARIO` - Previdenciário
+        * `TRIBUTARIO` - Tributário
+        * `CRIMINAL` - Criminal
+        * `OUTRO` - Outro
+    Cliente:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        escritorio:
+          type: string
+          format: uuid
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 255
+        cpf_cnpj:
+          type: string
+          maxLength: 20
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        tipo:
+          $ref: '#/components/schemas/ClienteTipoEnum'
+        processos_count:
+          type: integer
+          readOnly: true
+          default: 0
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        atualizado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - atualizado_em
+      - cpf_cnpj
+      - criado_em
+      - escritorio
+      - id
+      - nome
+      - processos_count
+    ClienteRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 255
+        cpf_cnpj:
+          type: string
+          minLength: 1
+          maxLength: 20
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        tipo:
+          $ref: '#/components/schemas/ClienteTipoEnum'
+      required:
+      - cpf_cnpj
+      - nome
+    ClienteTipoEnum:
+      enum:
+      - PF
+      - PJ
+      type: string
+      description: |-
+        * `PF` - Pessoa Física
+        * `PJ` - Pessoa Jurídica
+    ConfirmarEmailRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 512
+      required:
+      - token
+    ConfirmarResetSenhaRequest:
+      type: object
+      properties:
+        uid:
+          type: string
+          minLength: 1
+          maxLength: 64
+        token:
+          type: string
+          minLength: 1
+          maxLength: 128
+        nova_senha:
+          type: string
+          writeOnly: true
+          minLength: 8
+          maxLength: 128
+      required:
+      - nova_senha
+      - token
+      - uid
+    ConviteEscritorio:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        papel:
+          $ref: '#/components/schemas/PapelEnum'
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        expira_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - criado_em
+      - email
+      - expira_em
+      - id
+      - papel
+    ConviteEscritorioRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        papel:
+          $ref: '#/components/schemas/PapelEnum'
+      required:
+      - email
+      - papel
+    CriarTokenApiRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 80
+        senha:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        validade_dias:
+          type: integer
+          maximum: 365
+          minimum: 1
+      required:
+      - nome
+      - senha
+    CustomTokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    DashboardResposta:
+      type: object
+      properties:
+        metricas:
+          $ref: '#/components/schemas/Metricas'
+        evolucao_processos:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvolucaoMensal'
+        status_processos:
+          type: array
+          items:
+            $ref: '#/components/schemas/NomeValor'
+        prazos_semana:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrazoDiario'
+        processos_recentes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Processo'
+        proximos_eventos:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventoAgenda'
+      required:
+      - evolucao_processos
+      - metricas
+      - prazos_semana
+      - processos_recentes
+      - proximos_eventos
+      - status_processos
+    Detalhe:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    DiaDaMemoria:
+      type: object
+      properties:
+        data:
+          type: string
+          format: date
+        motivo:
+          type: string
+      required:
+      - data
+      - motivo
+    DocumentoProcesso:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          readOnly: true
+        tamanho:
+          type: integer
+          readOnly: true
+        url:
+          type: string
+          nullable: true
+          readOnly: true
+        enviado_por_nome:
+          type: string
+          nullable: true
+          readOnly: true
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - criado_em
+      - enviado_por_nome
+      - id
+      - nome
+      - tamanho
+      - url
+    DocumentoProcessoRequest:
+      type: object
+      properties:
+        arquivo:
+          type: string
+          format: binary
+          writeOnly: true
+      required:
+      - arquivo
+    Escritorio:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        nome:
+          type: string
+          maxLength: 255
+        fuso_horario:
+          type: string
+          maxLength: 64
+        ativo:
+          type: boolean
+          readOnly: true
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        atualizado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - ativo
+      - atualizado_em
+      - criado_em
+      - id
+      - nome
+    EscritorioResumo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        nome:
+          type: string
+          readOnly: true
+        fuso_horario:
+          type: string
+          readOnly: true
+      required:
+      - fuso_horario
+      - id
+      - nome
+    EventoAgenda:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        escritorio:
+          type: string
+          format: uuid
+          readOnly: true
+        titulo:
+          type: string
+          maxLength: 255
+        tipo:
+          $ref: '#/components/schemas/EventoAgendaTipoEnum'
+        inicio:
+          type: string
+          format: date-time
+        fim:
+          type: string
+          format: date-time
+          nullable: true
+        processo:
+          type: integer
+          nullable: true
+        processo_numero:
+          type: string
+          readOnly: true
+        cliente_nome:
+          type: string
+          readOnly: true
+        local:
+          type: string
+          maxLength: 255
+        descricao:
+          type: string
+        concluido:
+          type: boolean
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        atualizado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - atualizado_em
+      - cliente_nome
+      - criado_em
+      - escritorio
+      - id
+      - inicio
+      - processo_numero
+      - titulo
+    EventoAgendaRequest:
+      type: object
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 255
+        tipo:
+          $ref: '#/components/schemas/EventoAgendaTipoEnum'
+        inicio:
+          type: string
+          format: date-time
+        fim:
+          type: string
+          format: date-time
+          nullable: true
+        processo:
+          type: integer
+          nullable: true
+        local:
+          type: string
+          maxLength: 255
+        descricao:
+          type: string
+        concluido:
+          type: boolean
+      required:
+      - inicio
+      - titulo
+    EventoAgendaTipoEnum:
+      enum:
+      - AUDIENCIA
+      - PRAZO
+      - REUNIAO
+      - OUTRO
+      type: string
+      description: |-
+        * `AUDIENCIA` - Audiência
+        * `PRAZO` - Prazo
+        * `REUNIAO` - Reunião
+        * `OUTRO` - Outro
+    EventoAuditoria:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        ator:
+          type: integer
+          readOnly: true
+          nullable: true
+        ator_nome:
+          type: string
+          nullable: true
+          readOnly: true
+        acao:
+          type: string
+          readOnly: true
+        recurso_tipo:
+          type: string
+          readOnly: true
+        recurso_id:
+          type: string
+          readOnly: true
+        alteracoes:
+          readOnly: true
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - acao
+      - alteracoes
+      - ator
+      - ator_nome
+      - criado_em
+      - id
+      - recurso_id
+      - recurso_tipo
+    EvolucaoMensal:
+      type: object
+      properties:
+        mes:
+          type: string
+        ativos:
+          type: integer
+        novos:
+          type: integer
+      required:
+      - ativos
+      - mes
+      - novos
+    ExcluirContaRequest:
+      type: object
+      properties:
+        senha:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+      required:
+      - senha
+    FiltrosAplicados:
+      type: object
+      properties:
+        area:
+          type: string
+          nullable: true
+        ano:
+          type: string
+          nullable: true
+      required:
+      - ano
+      - area
+    Intervalo:
+      type: object
+      properties:
+        min:
+          type: integer
+        max:
+          type: integer
+      required:
+      - max
+      - min
+    JurimetriaProcessosResposta:
+      type: object
+      properties:
+        total:
+          type: integer
+        exibidos:
+          type: integer
+          description: A lista é cortada em 200 itens.
+        processos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessoResumo'
+      required:
+      - exibidos
+      - processos
+      - total
+    JurimetriaResposta:
+      type: object
+      properties:
+        total_analisados:
+          type: integer
+        taxa_favoravel:
+          type: integer
+          nullable: true
+          description: Nula abaixo do piso de amostra.
+        intervalo_favoravel:
+          allOf:
+          - $ref: '#/components/schemas/Intervalo'
+          nullable: true
+          description: Intervalo de confiança de 95% (Wilson).
+        amostra_suficiente:
+          type: boolean
+        piso_amostra:
+          type: integer
+        processos_ativos:
+          type: integer
+        por_vara:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxaPorVara'
+        por_ano:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxaPorAno'
+        resultados:
+          type: array
+          items:
+            $ref: '#/components/schemas/NomeValor'
+        filtros:
+          $ref: '#/components/schemas/FiltrosAplicados'
+        opcoes:
+          $ref: '#/components/schemas/OpcoesDeFiltro'
+        insight:
+          type: string
+      required:
+      - amostra_suficiente
+      - filtros
+      - insight
+      - intervalo_favoravel
+      - opcoes
+      - piso_amostra
+      - por_ano
+      - por_vara
+      - processos_ativos
+      - resultados
+      - taxa_favoravel
+      - total_analisados
+    LogoutRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      required:
+      - refresh
+    MembroEscritorio:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        escritorio:
+          allOf:
+          - $ref: '#/components/schemas/EscritorioResumo'
+          readOnly: true
+        usuario:
+          allOf:
+          - $ref: '#/components/schemas/UsuarioMembro'
+          readOnly: true
+        papel:
+          $ref: '#/components/schemas/PapelEnum'
+        status:
+          $ref: '#/components/schemas/StatusMembroEnum'
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        atualizado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - atualizado_em
+      - criado_em
+      - escritorio
+      - id
+      - papel
+      - usuario
+    Metricas:
+      type: object
+      properties:
+        processos_ativos:
+          type: integer
+        novos_clientes_mes:
+          type: integer
+        prazos_semana:
+          type: integer
+        audiencias_proximas:
+          type: integer
+      required:
+      - audiencias_proximas
+      - novos_clientes_mes
+      - prazos_semana
+      - processos_ativos
+    NomeValor:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: integer
+      required:
+      - name
+      - value
+    OpcaoDeArea:
+      type: object
+      properties:
+        valor:
+          type: string
+        rotulo:
+          type: string
+      required:
+      - rotulo
+      - valor
+    OpcoesDeFiltro:
+      type: object
+      properties:
+        areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpcaoDeArea'
+        anos:
+          type: array
+          items:
+            type: integer
+      required:
+      - anos
+      - areas
+    PapelEnum:
+      enum:
+      - OWNER
+      - ADMIN
+      - ADVOGADO
+      - ESTAGIARIO
+      type: string
+      description: |-
+        * `OWNER` - Proprietário
+        * `ADMIN` - Administrador
+        * `ADVOGADO` - Advogado
+        * `ESTAGIARIO` - Estagiário
+    PatchedClienteRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 255
+        cpf_cnpj:
+          type: string
+          minLength: 1
+          maxLength: 20
+        email:
+          nullable: true
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        telefone:
+          type: string
+          nullable: true
+          maxLength: 20
+        tipo:
+          $ref: '#/components/schemas/ClienteTipoEnum'
+    PatchedEscritorioRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 255
+        fuso_horario:
+          type: string
+          minLength: 1
+          maxLength: 64
+    PatchedEventoAgendaRequest:
+      type: object
+      properties:
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 255
+        tipo:
+          $ref: '#/components/schemas/EventoAgendaTipoEnum'
+        inicio:
+          type: string
+          format: date-time
+        fim:
+          type: string
+          format: date-time
+          nullable: true
+        processo:
+          type: integer
+          nullable: true
+        local:
+          type: string
+          maxLength: 255
+        descricao:
+          type: string
+        concluido:
+          type: boolean
+    PatchedMembroEscritorioRequest:
+      type: object
+      properties:
+        papel:
+          $ref: '#/components/schemas/PapelEnum'
+        status:
+          $ref: '#/components/schemas/StatusMembroEnum'
+    PatchedProcessoRequest:
+      type: object
+      properties:
+        numero_cnj:
+          type: string
+          minLength: 1
+          maxLength: 25
+        titulo:
+          type: string
+          maxLength: 255
+        area:
+          $ref: '#/components/schemas/AreaEnum'
+        vara:
+          type: string
+          minLength: 1
+          maxLength: 100
+        comarca:
+          type: string
+          minLength: 1
+          maxLength: 100
+        cliente:
+          type: integer
+        parte_contraria:
+          type: string
+          minLength: 1
+          maxLength: 255
+        status:
+          $ref: '#/components/schemas/StatusProcessoEnum'
+        resultado:
+          $ref: '#/components/schemas/ResultadoEnum'
+        valor_causa:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          nullable: true
+        data_distribuicao:
+          type: string
+          format: date
+          nullable: true
+        observacoes:
+          type: string
+        andamentos_sincronizados_em:
+          type: string
+          format: date-time
+          nullable: true
+        arquivo_peticao_inicial:
+          type: string
+          format: binary
+          writeOnly: true
+          nullable: true
+    PatchedUsuarioRequest:
+      type: object
+      properties:
+        email:
+          title: Endereço de email
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        nome:
+          type: string
+    PendenciasResposta:
+      type: object
+      properties:
+        urgentes:
+          type: integer
+          description: Prazos vencidos e compromissos até amanhã.
+        total_vencidos:
+          type: integer
+        total_proximos:
+          type: integer
+        vencidos:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventoAgenda'
+        proximos:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventoAgenda'
+        andamentos_recentes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AndamentoRecente'
+      required:
+      - andamentos_recentes
+      - proximos
+      - total_proximos
+      - total_vencidos
+      - urgentes
+      - vencidos
+    PrazoCalculoResposta:
+      type: object
+      properties:
+        data_base:
+          type: string
+          format: date
+        dias:
+          type: integer
+        tipo:
+          type: string
+        area:
+          type: string
+        fundamento:
+          type: string
+        marco_inicial:
+          type: string
+          format: date
+        primeiro_dia_contado:
+          type: string
+          format: date
+        vencimento:
+          type: string
+          format: date
+        fins_de_semana_nao_contados:
+          type: integer
+        dias_nao_contados:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiaDaMemoria'
+        dias_a_conferir:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiaDaMemoria'
+          description: Contados como úteis; dependem do calendário do tribunal.
+        ressalvas:
+          type: array
+          items:
+            type: string
+      required:
+      - area
+      - data_base
+      - dias
+      - dias_a_conferir
+      - dias_nao_contados
+      - fins_de_semana_nao_contados
+      - fundamento
+      - marco_inicial
+      - primeiro_dia_contado
+      - ressalvas
+      - tipo
+      - vencimento
+    PrazoDiario:
+      type: object
+      properties:
+        dia:
+          type: string
+        qtd:
+          type: integer
+      required:
+      - dia
+      - qtd
+    Processo:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        escritorio:
+          type: string
+          format: uuid
+          readOnly: true
+        numero_cnj:
+          type: string
+          maxLength: 25
+        titulo:
+          type: string
+          maxLength: 255
+        area:
+          $ref: '#/components/schemas/AreaEnum'
+        vara:
+          type: string
+          maxLength: 100
+        comarca:
+          type: string
+          maxLength: 100
+        cliente:
+          type: integer
+        cliente_nome:
+          type: string
+          readOnly: true
+        parte_contraria:
+          type: string
+          maxLength: 255
+        status:
+          $ref: '#/components/schemas/StatusProcessoEnum'
+        resultado:
+          $ref: '#/components/schemas/ResultadoEnum'
+        valor_causa:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          nullable: true
+        data_distribuicao:
+          type: string
+          format: date
+          nullable: true
+        observacoes:
+          type: string
+        andamentos_sincronizados_em:
+          type: string
+          format: date-time
+          nullable: true
+        arquivo_peticao_inicial_url:
+          type: string
+          nullable: true
+          readOnly: true
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        atualizado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - arquivo_peticao_inicial_url
+      - atualizado_em
+      - cliente
+      - cliente_nome
+      - comarca
+      - criado_em
+      - escritorio
+      - id
+      - numero_cnj
+      - parte_contraria
+      - vara
+    ProcessoRequest:
+      type: object
+      properties:
+        numero_cnj:
+          type: string
+          minLength: 1
+          maxLength: 25
+        titulo:
+          type: string
+          maxLength: 255
+        area:
+          $ref: '#/components/schemas/AreaEnum'
+        vara:
+          type: string
+          minLength: 1
+          maxLength: 100
+        comarca:
+          type: string
+          minLength: 1
+          maxLength: 100
+        cliente:
+          type: integer
+        parte_contraria:
+          type: string
+          minLength: 1
+          maxLength: 255
+        status:
+          $ref: '#/components/schemas/StatusProcessoEnum'
+        resultado:
+          $ref: '#/components/schemas/ResultadoEnum'
+        valor_causa:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,12}(?:\.\d{0,2})?$
+          nullable: true
+        data_distribuicao:
+          type: string
+          format: date
+          nullable: true
+        observacoes:
+          type: string
+        andamentos_sincronizados_em:
+          type: string
+          format: date-time
+          nullable: true
+        arquivo_peticao_inicial:
+          type: string
+          format: binary
+          writeOnly: true
+          nullable: true
+      required:
+      - cliente
+      - comarca
+      - numero_cnj
+      - parte_contraria
+      - vara
+    ProcessoResumo:
+      type: object
+      description: Só o que identifica o caso na lista que sustenta uma taxa; sem
+        valor da causa.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        numero_cnj:
+          type: string
+          readOnly: true
+        titulo:
+          type: string
+          readOnly: true
+        vara:
+          type: string
+          readOnly: true
+        comarca:
+          type: string
+          readOnly: true
+        area:
+          allOf:
+          - $ref: '#/components/schemas/AreaEnum'
+          readOnly: true
+        resultado:
+          allOf:
+          - $ref: '#/components/schemas/ResultadoEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusProcessoEnum'
+          readOnly: true
+        data_distribuicao:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        cliente_nome:
+          type: string
+          readOnly: true
+      required:
+      - area
+      - cliente_nome
+      - comarca
+      - data_distribuicao
+      - id
+      - numero_cnj
+      - resultado
+      - status
+      - titulo
+      - vara
+    RegistroRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 150
+        senha:
+          type: string
+          writeOnly: true
+          minLength: 8
+          maxLength: 128
+        escritorio_nome:
+          type: string
+          minLength: 1
+          maxLength: 255
+        aceite_termos:
+          type: boolean
+      required:
+      - aceite_termos
+      - email
+      - escritorio_nome
+      - nome
+      - senha
+    ResultadoEnum:
+      enum:
+      - PENDENTE
+      - FAVORAVEL
+      - DESFAVORAVEL
+      - ACORDO
+      type: string
+      description: |-
+        * `PENDENTE` - Pendente
+        * `FAVORAVEL` - Favorável
+        * `DESFAVORAVEL` - Desfavorável
+        * `ACORDO` - Acordo
+    Sessao:
+      type: object
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+        user:
+          $ref: '#/components/schemas/Usuario'
+      required:
+      - access
+      - refresh
+      - user
+    SincronizacaoResposta:
+      type: object
+      properties:
+        sincronizado_em:
+          type: string
+          format: date-time
+          nullable: true
+        andamentos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Andamento'
+        novos:
+          type: integer
+      required:
+      - andamentos
+      - novos
+      - sincronizado_em
+    SolicitarResetSenhaRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+      required:
+      - email
+    StatusMembroEnum:
+      enum:
+      - ATIVO
+      - SUSPENSO
+      type: string
+      description: |-
+        * `ATIVO` - Ativo
+        * `SUSPENSO` - Suspenso
+    StatusProcessoEnum:
+      enum:
+      - ATIVO
+      - SUSPENSO
+      - ARQUIVADO
+      type: string
+      description: |-
+        * `ATIVO` - Ativo
+        * `SUSPENSO` - Suspenso
+        * `ARQUIVADO` - Arquivado
+    TaxaPorAno:
+      type: object
+      properties:
+        ano:
+          type: integer
+          nullable: true
+          description: 'Nulo: processos sem data de distribuição.'
+        total:
+          type: integer
+        suficiente:
+          type: boolean
+        favoravel:
+          type: integer
+          nullable: true
+        desfavoravel:
+          type: integer
+          nullable: true
+        intervalo_favoravel:
+          allOf:
+          - $ref: '#/components/schemas/Intervalo'
+          nullable: true
+        motivo:
+          type: string
+          nullable: true
+      required:
+      - ano
+      - desfavoravel
+      - favoravel
+      - intervalo_favoravel
+      - motivo
+      - suficiente
+      - total
+    TaxaPorVara:
+      type: object
+      properties:
+        vara:
+          type: string
+        total:
+          type: integer
+        suficiente:
+          type: boolean
+        favoravel:
+          type: integer
+          nullable: true
+        desfavoravel:
+          type: integer
+          nullable: true
+        intervalo_favoravel:
+          allOf:
+          - $ref: '#/components/schemas/Intervalo'
+          nullable: true
+        motivo:
+          type: string
+          nullable: true
+      required:
+      - desfavoravel
+      - favoravel
+      - intervalo_favoravel
+      - motivo
+      - suficiente
+      - total
+      - vara
+    TokenApi:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nome:
+          type: string
+          readOnly: true
+        prefixo:
+          type: string
+          readOnly: true
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        expira_em:
+          type: string
+          format: date-time
+          readOnly: true
+        ultimo_uso_em:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        revogado_em:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        ativo:
+          type: boolean
+          readOnly: true
+      required:
+      - ativo
+      - criado_em
+      - expira_em
+      - id
+      - nome
+      - prefixo
+      - revogado_em
+      - ultimo_uso_em
+    TokenApiCriado:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        prefixo:
+          type: string
+        criado_em:
+          type: string
+          format: date-time
+        expira_em:
+          type: string
+          format: date-time
+        ultimo_uso_em:
+          type: string
+          format: date-time
+          nullable: true
+        revogado_em:
+          type: string
+          format: date-time
+          nullable: true
+        ativo:
+          type: boolean
+        token:
+          type: string
+          description: Exibido uma única vez; no banco fica só o hash.
+      required:
+      - ativo
+      - criado_em
+      - expira_em
+      - id
+      - nome
+      - prefixo
+      - revogado_em
+      - token
+      - ultimo_uso_em
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          title: Usuário
+          description: Obrigatório. 150 caracteres ou menos. Letras, números e @/./+/-/_
+            apenas.
+        email:
+          title: Endereço de email
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        nome:
+          type: string
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/MembroEscritorio'
+          readOnly: true
+        escritorio_ativo:
+          allOf:
+          - $ref: '#/components/schemas/EscritorioResumo'
+          nullable: true
+          readOnly: true
+        capabilities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        email_verificado:
+          type: boolean
+          readOnly: true
+      required:
+      - capabilities
+      - email_verificado
+      - escritorio_ativo
+      - id
+      - memberships
+      - username
+    UsuarioMembro:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          title: Usuário
+          description: Obrigatório. 150 caracteres ou menos. Letras, números e @/./+/-/_
+            apenas.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Endereço de email
+        nome:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - id
+      - nome
+      - username
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    tokenApi:
+      type: http
+      scheme: bearer
+      description: 'Token de API (jp_...): somente GET, em uma lista fixa de rotas.'

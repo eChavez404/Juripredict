@@ -20,7 +20,7 @@ class EventoAuditoriaSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
-    def get_ator_nome(self, instance):
+    def get_ator_nome(self, instance) -> str | None:
         if not instance.ator:
             return None
         return instance.ator.first_name or instance.ator.email or instance.ator.username

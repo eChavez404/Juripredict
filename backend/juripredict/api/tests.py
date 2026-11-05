@@ -225,7 +225,10 @@ class IndicadoresApiTests(AuthenticatedApiTestCase):
         self.assertEqual(dashboard.status_code, status.HTTP_200_OK)
         self.assertEqual(dashboard.data["metricas"]["processos_ativos"], 1)
         self.assertEqual(jurimetria.data["total_analisados"], 1)
-        self.assertEqual(jurimetria.data["taxa_favoravel"], 100)
+        # 1 favorável em 1 processo não diz nada sobre a carteira: abaixo do piso
+        # a taxa é suprimida, em vez de exibir "100%"
+        self.assertIsNone(jurimetria.data["taxa_favoravel"])
+        self.assertFalse(jurimetria.data["amostra_suficiente"])
 
 
 class ContextoEscritorioApiTests(AuthenticatedApiTestCase):

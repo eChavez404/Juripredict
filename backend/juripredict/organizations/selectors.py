@@ -1,6 +1,9 @@
 import uuid
 
-from .models import MembroEscritorio
+from django.utils import timezone
+
+from .models import ConviteEscritorio, MembroEscritorio
+from .tokens import hash_token
 
 
 class ContextoEscritorioInvalido(Exception):
@@ -46,3 +49,26 @@ def resolver_membership(usuario, escritorio_id=None, *, obrigatorio=True):
         )
     return None
 
+
+
+def convites_pendentes_do_escritorio(escritorio):
+    return ConviteEscritorio.objects.filter(
+        escritorio=escritorio, aceito_em__isnull=True
+    )
+
+
+def convite_pendente_por_token(token, *, bloquear=False):
+    """Convite ainda válido para o token, ou ``None``.
+
+    Expirado e já aceito são tratados igual a inexistente: quem chama não deve
+    conseguir distinguir os casos pela resposta.
+    """
+    queryset = ConviteEscritorio.objects.select_related("escritorio")
+    if bloquear:
+        queryset = queryset.select_for_update()
+    return queryset.filter(
+        token_hash=hash_token(token),
+        aceito_em__isnull=True,
+        expira_em__gt=timezone.now(),
+        escritorio__ativo=True,
+    ).first()

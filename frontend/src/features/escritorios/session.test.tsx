@@ -10,6 +10,7 @@ import type { MembroResumo } from './types';
 vi.mock('../../services/juripredict', () => ({
   authService: {
     login: vi.fn(),
+    startSession: vi.fn(),
     me: vi.fn(),
     updateMe: vi.fn(),
     changePassword: vi.fn(),

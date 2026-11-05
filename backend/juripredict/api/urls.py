@@ -12,6 +12,10 @@ from .views import (
     DashboardAPIView,
     EventoAgendaViewSet,
     JurimetriaAPIView,
+    JurimetriaExportarAPIView,
+    JurimetriaProcessosAPIView,
+    PendenciasAPIView,
+    PrazoCalculoAPIView,
     ProcessoViewSet,
     UsuarioAtualAPIView,
 )
@@ -32,6 +36,10 @@ urlpatterns = [
     path("auth/password/", AlterarSenhaAPIView.as_view(), name="alterar-senha"),
     path("dashboard/", DashboardAPIView.as_view(), name="dashboard"),
     path("jurimetria/", JurimetriaAPIView.as_view(), name="jurimetria"),
+    path("jurimetria/processos/", JurimetriaProcessosAPIView.as_view(), name="jurimetria-processos"),
+    path("jurimetria/exportar/", JurimetriaExportarAPIView.as_view(), name="jurimetria-exportar"),
+    path("pendencias/", PendenciasAPIView.as_view(), name="pendencias"),
+    path("prazos/calcular/", PrazoCalculoAPIView.as_view(), name="prazo-calcular"),
     path("", include("organizations.urls")),
     path("", include(router.urls)),
 ]

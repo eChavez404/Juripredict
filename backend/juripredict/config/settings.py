@@ -1,6 +1,8 @@
 """Configuração do Django orientada por variáveis de ambiente."""
 
+import logging
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -10,7 +12,9 @@ from dotenv import load_dotenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+PROJECT_ROOT = BASE_DIR.parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -60,10 +64,13 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    "drf_spectacular",
     "storages",
     "organizations",
     "auditlog",
+    "accounts",
     "api",
 ]
 
@@ -80,6 +87,7 @@ MIDDLEWARE += [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "accounts.middleware.AuditoriaTokenApiMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -102,6 +110,11 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+DB_HOST = os.getenv("DB_HOST") or os.getenv("SUPABASE_DB_HOST")
+DB_NAME = os.getenv("DB_NAME") or os.getenv("SUPABASE_DB_NAME", "juripredict_db")
+DB_USER = os.getenv("DB_USER") or os.getenv("SUPABASE_DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD") or os.getenv("SUPABASE_DB_PASSWORD", "")
+DB_PORT = os.getenv("DB_PORT") or os.getenv("SUPABASE_DB_PORT", "5432")
 
 if DATABASE_URL:
     database = urlparse(DATABASE_URL)
@@ -126,15 +139,15 @@ if DATABASE_URL:
             "OPTIONS": database_options,
         }
     }
-elif os.getenv("DB_HOST"):
+elif DB_HOST:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", "juripredict_db"),
-            "USER": os.getenv("DB_USER", "postgres"),
-            "PASSWORD": os.getenv("DB_PASSWORD", ""),
-            "HOST": os.environ["DB_HOST"],
-            "PORT": os.getenv("DB_PORT", "5432"),
+            "NAME": DB_NAME,
+            "USER": DB_USER,
+            "PASSWORD": DB_PASSWORD,
+            "HOST": DB_HOST,
+            "PORT": DB_PORT,
             "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
         }
     }
@@ -152,6 +165,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+# Só nos testes: PBKDF2 com centenas de milhares de iterações transforma cada
+# create_user num custo de ~0,3 s. Produção e desenvolvimento seguem com o padrão.
+if "test" in sys.argv:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
@@ -172,7 +190,75 @@ STORAGES = {
     },
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# E-mail transacional (convite, recuperação de senha, lembrete de prazo).
+# Com EMAIL_HOST definido usa SMTP, que serve a qualquer provedor (Resend,
+# SendGrid, Amazon SES...). Sem ele, cai no console: aceitável em desenvolvimento,
+# mas em produção significa que NENHUM e-mail sai, e por isso avisa no log.
+EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+    EMAIL_TIMEOUT = 10
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    if not DEBUG:
+        logging.getLogger(__name__).warning(
+            "EMAIL_HOST não configurado: e-mails vão para o console e não chegam "
+            "a ninguém. Defina EMAIL_HOST antes de aceitar usuários reais."
+        )
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL", "JuriPredict <nao-responda@juripredict.local>"
+)
+
+# Base dos links enviados por e-mail.
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    f"https://{RENDER_EXTERNAL_HOSTNAME}" if RENDER_EXTERNAL_HOSTNAME else "http://localhost:5173",
+).rstrip("/")
+
+# Validade dos links. O de recuperação de senha é curto de propósito.
+PASSWORD_RESET_TIMEOUT = int(os.getenv("PASSWORD_RESET_TIMEOUT", "3600"))
+CONVITE_VALIDADE_DIAS = int(os.getenv("CONVITE_VALIDADE_DIAS", "7"))
+
+# Monitoramento de erros. Só liga com SENTRY_DSN: sem ele nada sai da aplicação.
+# O conteúdo das requisições NUNCA é enviado: o que trafega aqui é CPF, dado de
+# cliente e de processo, e não pode parar num serviço de terceiros.
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.getenv("SENTRY_ENVIRONMENT", "development" if DEBUG else "production"),
+        send_default_pii=False,
+        max_request_body_size="never",
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0")),
+    )
+
+# Quantos processos concluídos uma taxa precisa ter para ser exibida. Abaixo
+# disso a taxa é suprimida, com o motivo: 1 favorável em 1 processo daria "100%".
+JURIMETRIA_PISO_AMOSTRA = int(os.getenv("JURIMETRIA_PISO_AMOSTRA", "10"))
+
+# Teto de anexos por processo: evita que uma conta encha o storage sem querer.
+DOCUMENTOS_MAX_POR_PROCESSO = int(os.getenv("DOCUMENTOS_MAX_POR_PROCESSO", "50"))
+# Tamanho máximo dos arquivos enviados (petição inicial e anexos).
+UPLOAD_MAX_BYTES = int(os.getenv("UPLOAD_MAX_MB", "10")) * 1024 * 1024
+
+# Quanto antes do prazo o lembrete sai. O agendador roda de hora em hora.
+LEMBRETE_ANTECEDENCIA_HORAS = int(os.getenv("LEMBRETE_ANTECEDENCIA_HORAS", "24"))
+
+# Chave pública do DataJud (wiki do CNJ). Sem ela o acompanhamento fica desligado.
+DATAJUD_API_KEY = os.getenv("DATAJUD_API_KEY", "")
+# Tokens de API (agentes/MCP): validade padrão e quantos podem estar ativos por pessoa.
+API_TOKEN_VALIDADE_DIAS = int(os.getenv("API_TOKEN_VALIDADE_DIAS", "90"))
+API_TOKEN_MAX_ATIVOS = int(os.getenv("API_TOKEN_MAX_ATIVOS", "5"))
+VERIFICACAO_EMAIL_HORAS = int(os.getenv("VERIFICACAO_EMAIL_HORAS", "72"))
+# Versão vigente dos Termos de Uso e da Política de Privacidade. Mudou o texto,
+# muda a versão: o cadastro grava qual versão cada usuário aceitou.
+TERMOS_VERSAO = os.getenv("TERMOS_VERSAO", "2026-10")
 
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
@@ -191,7 +277,9 @@ SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 
 REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "accounts.authentication.TokenApiAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
@@ -201,17 +289,59 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
+    # Atrás de proxy (Render, Fly) o IP real vem no X-Forwarded-For. Sem isto,
+    # todo mundo parece vir do mesmo endereço e o limite vira global.
+    "NUM_PROXIES": int(os.getenv("NUM_PROXIES", "0" if DEBUG else "1")),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/day",
-        "user": "1000/day",
+        # 1000/dia esgotava com uso normal: cada tela do SPA faz várias chamadas.
+        "user": "20000/day",
+        # Endpoints públicos têm escopo próprio, em vez do limite anônimo global.
+        "login": "60/min",
+        "login_conta": "10/min",
+        "refresh": "300/hour",
+        "registro": "5/hour",
+        "convite": "20/hour",
+        "recuperacao_senha": "10/hour",
+        "conta_sensivel": "10/hour",
+        "andamentos": "30/hour",
     },
 }
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "JuriPredict API",
+    "DESCRIPTION": (
+        "API REST do JuriPredict: gestão de clientes, processos e agenda, com jurimetria "
+        "da carteira, isolamento por escritório e controle de acesso por papel.\n\n"
+        "Erros são devolvidos em JSON: 400 (dados inválidos), 401 (credencial ausente, inválida "
+        "ou expirada), 403 (papel sem a capacidade exigida), 404 (recurso inexistente ou de outro "
+        "escritório), 409 (exclusão de cliente com processos), 429 (limite de requisições) e "
+        "503 (DataJud sem chave configurada)."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "StatusProcessoEnum": "api.models.Processo.STATUS_CHOICES",
+        "StatusMembroEnum": "organizations.models.MembroEscritorio.Status",
+    },
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "config.openapi.adicionar_cabecalho_escritorio",
+    ],
+}
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=3),
+    # O access token não pode ser revogado, só expira. Curto, limita o que um
+    # token vazado permite; o app renova sozinho, então a pessoa não percebe.
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_MINUTES", "30"))),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
+    # Cada renovação emite um refresh novo e invalida o anterior; um refresh
+    # roubado e usado depois do dono deixa de funcionar. O logout e a troca de
+    # senha por recuperação revogam o refresh no servidor.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 if env_bool("USE_R2_STORAGE"):

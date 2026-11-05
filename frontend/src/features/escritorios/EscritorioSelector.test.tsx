@@ -41,6 +41,7 @@ describe('EscritorioSelector', () => {
       activeMembership: memberships[0],
       loading: false,
       login: vi.fn(),
+      startSession: vi.fn(),
       updateUser: vi.fn(),
       selectEscritorio,
       hasCapability: () => false,

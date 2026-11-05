@@ -16,6 +16,17 @@ const collectionItems = <T,>(payload: CollectionResponse<T>): T[] => (
   Array.isArray(payload) ? payload : payload.results ?? []
 );
 
+/** Acessos feitos com token de API (agentes): quem leu o quê, com qual credencial. */
+const descreverAcessoDeAgente = (acao: string, detalhes: UnknownRecord): string | null => {
+  if (acao !== 'token_api.leitura' && acao !== 'token_api.negado') return null;
+  const caminho = asString(detalhes.caminho, '?');
+  const credencial = asString(detalhes.credencial, '?');
+  const status = typeof detalhes.status === 'number' ? ` (HTTP ${detalhes.status})` : '';
+  return acao === 'token_api.negado'
+    ? `Acesso negado ao token ${credencial}: ${caminho}${status}.`
+    : `Leitura por agente com o token ${credencial}: ${caminho}${status}.`;
+};
+
 const normalizeEvento = (value: unknown): EventoAuditoria | null => {
   if (!isRecord(value)) return null;
   const rawId = typeof value.id === 'string' ? value.id : String(value.id ?? '');
@@ -24,14 +35,17 @@ const normalizeEvento = (value: unknown): EventoAuditoria | null => {
   const ator = isRecord(value.ator ?? value.actor) ? value.ator ?? value.actor : {};
   const recurso = isRecord(value.recurso ?? value.resource) ? value.recurso ?? value.resource : {};
   const ocorridoEm = asString(value.ocorrido_em ?? value.occurred_at ?? value.criado_em);
-  const alteracoes = isRecord(value.alteracoes) ? Object.keys(value.alteracoes) : [];
+  const detalhes = isRecord(value.alteracoes) ? value.alteracoes : {};
+  const alteracoes = Array.isArray(detalhes.campos) ? detalhes.campos.map(String) : Object.keys(detalhes);
+  const acaoBruta = asString(value.acao ?? value.action);
 
   return {
     id: rawId,
     acao: asString(value.acao ?? value.action, 'EVENTO').replaceAll('_', ' '),
     descricao: asString(
       value.descricao ?? value.summary ?? value.detail,
-      alteracoes.length ? `Campos alterados: ${alteracoes.join(', ')}.` : 'Ação registrada.',
+      descreverAcessoDeAgente(acaoBruta, detalhes)
+        ?? (alteracoes.length ? `Campos alterados: ${alteracoes.join(', ')}.` : 'Ação registrada.'),
     ),
     atorNome: asString(value.ator_nome) || (isRecord(ator)
       ? asString(ator.nome ?? ator.name ?? ator.email, 'Sistema')

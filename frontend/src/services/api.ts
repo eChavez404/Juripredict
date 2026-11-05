@@ -22,6 +22,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let renovacaoEmAndamento: Promise<string> | null = null;
+
+// O refresh vale uma vez só. Uma tela faz várias chamadas ao mesmo tempo: se cada 401
+// renovasse por conta própria, a segunda seria recusada e derrubaria a sessão.
+const renovarSessao = (refreshToken: string) => {
+  renovacaoEmAndamento ??= axios
+    .post<{ access: string; refresh?: string }>(`${API_URL}/auth/token/refresh/`, {
+      refresh: refreshToken,
+    })
+    .then((response) => {
+      localStorage.setItem('access_token', response.data.access);
+      // Com rotação ligada o refresh antigo é invalidado a cada uso: sem
+      // guardar o novo, a renovação seguinte falharia e a pessoa seria deslogada.
+      if (response.data.refresh) localStorage.setItem('refresh_token', response.data.refresh);
+      return response.data.access;
+    })
+    .finally(() => {
+      renovacaoEmAndamento = null;
+    });
+  return renovacaoEmAndamento;
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -33,14 +55,13 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          const response = await axios.post<{ access: string }>(`${API_URL}/auth/token/refresh/`, {
-            refresh: refreshToken,
-          });
-          localStorage.setItem('access_token', response.data.access);
-          originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
+          const access = await renovarSessao(refreshToken);
+          originalRequest.headers.Authorization = `Bearer ${access}`;
           return api(originalRequest);
         } catch {
-          // O fluxo abaixo encerra a sessão quando o refresh não é mais válido.
+          // Outra aba renovou antes: o refresh recusado era o velho, e a sessão segue válida.
+          if (localStorage.getItem('refresh_token') !== refreshToken) return api(originalRequest);
+          // Senão, o fluxo abaixo encerra a sessão: o refresh não é mais válido.
         }
       }
 

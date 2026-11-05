@@ -32,6 +32,10 @@ services:
         value: juripredict.onrender.com
       - key: CSRF_TRUSTED_ORIGINS
         value: https://juripredict.onrender.com
+      # Base dos links dos e-mails. Os agendamentos abaixo não têm o hostname do
+      # web, então o valor precisa ser explícito.
+      - key: FRONTEND_URL
+        value: https://juripredict.onrender.com
       - key: CORS_ALLOW_ALL_ORIGINS
         value: "false"
       - key: DB_CONN_MAX_AGE
@@ -40,3 +44,231 @@ services:
         value: "false"
       - key: WEB_CONCURRENCY
         value: "2"
+      # Atrás do proxy do Render há um salto: sem isto o limite de requisições
+      # enxerga todo mundo como um único IP.
+      - key: NUM_PROXIES
+        value: "1"
+      # E-mail transacional (convite, recuperação de senha, lembrete de prazo).
+      # Sem EMAIL_HOST nenhum e-mail sai. Preencha no painel do Render.
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      # Armazenamento de arquivos. O disco do container é apagado a cada deploy:
+      # enquanto USE_R2_STORAGE for false, as petições enviadas somem. Preencha
+      # as credenciais abaixo e troque USE_R2_STORAGE para "true".
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_STORAGE_BUCKET_NAME
+        sync: false
+      - key: AWS_S3_ENDPOINT_URL
+        sync: false
+      # Chave pública do DataJud (wiki do CNJ). Sem ela o acompanhamento fica desligado.
+      - key: DATAJUD_API_KEY
+        sync: false
+      # Monitoramento de erros (opcional).
+      - key: SENTRY_DSN
+        sync: false
+
+  # Tarefas agendadas. Cron Job do Render não existe no plano gratuito (mínimo: starter).
+  # Reaproveitam do web os segredos que ele já guarda.
+
+  - type: cron
+    name: juripredict-lembretes
+    runtime: docker
+    plan: starter
+    region: virginia
+    branch: develop
+    schedule: "0 * * * *"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python manage.py enviar_lembretes
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: juripredict-db
+          property: connectionString
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: juripredict.onrender.com
+      - key: FRONTEND_URL
+        value: https://juripredict.onrender.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DJANGO_SECRET_KEY
+      - key: FIELD_ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: FIELD_ENCRYPTION_KEY
+      - key: EMAIL_HOST
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST
+      - key: EMAIL_HOST_USER
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST_USER
+      - key: EMAIL_HOST_PASSWORD
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST_PASSWORD
+      - key: DEFAULT_FROM_EMAIL
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DEFAULT_FROM_EMAIL
+      - key: DATAJUD_API_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DATAJUD_API_KEY
+      - key: SENTRY_DSN
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: SENTRY_DSN
+
+  - type: cron
+    name: juripredict-andamentos
+    runtime: docker
+    plan: starter
+    region: virginia
+    branch: develop
+    schedule: "0 9 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python manage.py sincronizar_andamentos
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: juripredict-db
+          property: connectionString
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: juripredict.onrender.com
+      - key: FRONTEND_URL
+        value: https://juripredict.onrender.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DJANGO_SECRET_KEY
+      - key: FIELD_ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: FIELD_ENCRYPTION_KEY
+      - key: EMAIL_HOST
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST
+      - key: EMAIL_HOST_USER
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST_USER
+      - key: EMAIL_HOST_PASSWORD
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST_PASSWORD
+      - key: DEFAULT_FROM_EMAIL
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DEFAULT_FROM_EMAIL
+      - key: DATAJUD_API_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DATAJUD_API_KEY
+      - key: SENTRY_DSN
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: SENTRY_DSN
+
+  - type: cron
+    name: juripredict-limpeza-tokens
+    runtime: docker
+    plan: starter
+    region: virginia
+    branch: develop
+    schedule: "30 6 * * *"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python manage.py flushexpiredtokens
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: juripredict-db
+          property: connectionString
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: juripredict.onrender.com
+      - key: FRONTEND_URL
+        value: https://juripredict.onrender.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DJANGO_SECRET_KEY
+      - key: FIELD_ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: FIELD_ENCRYPTION_KEY
+      - key: EMAIL_HOST
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST
+      - key: EMAIL_HOST_USER
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST_USER
+      - key: EMAIL_HOST_PASSWORD
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: EMAIL_HOST_PASSWORD
+      - key: DEFAULT_FROM_EMAIL
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DEFAULT_FROM_EMAIL
+      - key: DATAJUD_API_KEY
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: DATAJUD_API_KEY
+      - key: SENTRY_DSN
+        fromService:
+          type: web
+          name: juripredict
+          envVarKey: SENTRY_DSN

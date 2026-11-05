@@ -1,12 +1,22 @@
 from rest_framework import mixins, viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
 from .context import EscritorioContextMixin
-from .models import Escritorio, MembroEscritorio
-from .permissions import PodeGerenciarEscritorio, TemContextoEscritorio
-from .selectors import memberships_do_usuario
-from .serializers import EscritorioSerializer, MembroEscritorioSerializer
-from .services import atualizar_escritorio, atualizar_membro
+from .models import ConviteEscritorio, Escritorio, MembroEscritorio
+from .permissions import PodeGerenciarEscritorio, TemContextoEscritorio, exige_capability
+from .selectors import convites_pendentes_do_escritorio, memberships_do_usuario
+from .serializers import (
+    ConviteEscritorioSerializer,
+    EscritorioSerializer,
+    MembroEscritorioSerializer,
+)
+from .services import (
+    atualizar_escritorio,
+    atualizar_membro,
+    convidar_membro,
+    revogar_convite,
+)
 
 
 class EscritorioViewSet(
@@ -26,6 +36,8 @@ class EscritorioViewSet(
         return [permission() for permission in classes]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Escritorio.objects.none()
         if self.action == "list":
             return Escritorio.objects.filter(
                 membros__in=memberships_do_usuario(self.request.user)
@@ -53,6 +65,8 @@ class MembroEscritorioViewSet(
     http_method_names = ("get", "patch", "head", "options")
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return MembroEscritorio.objects.none()
         escritorio = self.get_escritorio()
         if str(escritorio.pk) != str(self.kwargs["escritorio_id"]):
             return MembroEscritorio.objects.none()
@@ -69,3 +83,43 @@ class MembroEscritorioViewSet(
         )
         serializer.instance = membro
 
+
+
+class ConviteEscritorioViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    EscritorioContextMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = ConviteEscritorioSerializer
+    # Vale também para a leitura: a lista traz e-mails de quem ainda nem faz parte da equipe.
+    permission_classes = (
+        IsAuthenticated,
+        TemContextoEscritorio,
+        PodeGerenciarEscritorio,
+        exige_capability("membros.gerenciar"),
+    )
+    http_method_names = ("get", "post", "delete", "head", "options")
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return ConviteEscritorio.objects.none()
+        escritorio = self.get_escritorio()
+        if str(escritorio.pk) != str(self.kwargs["escritorio_id"]):
+            return ConviteEscritorio.objects.none()
+        return convites_pendentes_do_escritorio(escritorio)
+
+    def perform_create(self, serializer):
+        escritorio = self.get_escritorio()
+        if str(escritorio.pk) != str(self.kwargs["escritorio_id"]):
+            raise PermissionDenied("Escritório indisponível para este usuário.")
+        serializer.instance = convidar_membro(
+            escritorio=escritorio,
+            membro_ator=self.get_membro_escritorio(),
+            email=serializer.validated_data["email"],
+            papel=serializer.validated_data["papel"],
+        )
+
+    def perform_destroy(self, instance):
+        revogar_convite(convite=instance, membro_ator=self.get_membro_escritorio())

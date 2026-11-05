@@ -4,6 +4,13 @@ import Layout from './components/Layout';
 import { useAuth } from './contexts/auth';
 
 const Login = lazy(() => import('./pages/Login'));
+const Registro = lazy(() => import('./pages/Registro'));
+const EsqueciSenha = lazy(() => import('./pages/EsqueciSenha'));
+const RedefinirSenha = lazy(() => import('./pages/RedefinirSenha'));
+const ConfirmarEmail = lazy(() => import('./pages/ConfirmarEmail'));
+const AceitarConvite = lazy(() => import('./pages/AceitarConvite'));
+const Termos = lazy(() => import('./pages/Termos'));
+const Privacidade = lazy(() => import('./pages/Privacidade'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Processos = lazy(() => import('./pages/Processos'));
 const Clientes = lazy(() => import('./pages/Clientes'));
@@ -31,6 +38,14 @@ const App = () => (
     <Suspense fallback={<div className="route-loader" role="status" aria-label="Carregando" />}>
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/registro" element={<PublicRoute><Registro /></PublicRoute>} />
+        <Route path="/esqueci-senha" element={<PublicRoute><EsqueciSenha /></PublicRoute>} />
+        {/* Links de e-mail: abrem mesmo com outra conta logada no navegador. */}
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+        <Route path="/confirmar-email" element={<ConfirmarEmail />} />
+        <Route path="/convite"element={<AceitarConvite />} />
+        <Route path="/termos" element={<Termos />} />
+        <Route path="/privacidade" element={<Privacidade />} />
 
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<Dashboard />} />

@@ -70,3 +70,43 @@ class MembroEscritorio(models.Model):
     def __str__(self):
         return f"{self.usuario} em {self.escritorio} ({self.papel})"
 
+
+class ConviteEscritorio(models.Model):
+    """Convite pendente para alguém entrar no escritório.
+
+    O token em si nunca é gravado, só o hash (ver ``organizations.tokens``).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    escritorio = models.ForeignKey(
+        Escritorio,
+        on_delete=models.CASCADE,
+        related_name="convites",
+    )
+    email = models.EmailField()
+    papel = models.CharField(max_length=16, choices=MembroEscritorio.Papel.choices)
+    token_hash = models.CharField(max_length=64, unique=True)
+    convidado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="convites_enviados",
+        null=True,
+        blank=True,
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField()
+    aceito_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-criado_em",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("escritorio", "email"),
+                condition=models.Q(aceito_em__isnull=True),
+                name="convite_pendente_unico",
+            )
+        ]
+
+    def __str__(self):
+        return f"Convite de {self.email} para {self.escritorio} ({self.papel})"
+

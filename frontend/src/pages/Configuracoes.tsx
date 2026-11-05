@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { KeyRound, Save, UserRound } from 'lucide-react';
+import PrivacidadePanel from '../components/settings/PrivacidadePanel';
 import SettingsNav from '../components/settings/SettingsNav';
+import TokensApiPanel from '../components/settings/TokensApiPanel';
 import Feedback from '../components/ui/Feedback';
 import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/auth';
@@ -75,6 +77,9 @@ const Configuracoes = () => {
             <div className="form-actions"><button className="button button--primary" type="submit" disabled={busy}>Alterar senha</button></div>
           </form>
         </article>
+
+        <TokensApiPanel />
+        <PrivacidadePanel />
       </section>
     </div>
   );

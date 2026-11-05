@@ -4,6 +4,11 @@ export const CAPABILITIES = {
   membrosVisualizar: 'membros.ler',
   membrosGerenciar: 'membros.gerenciar',
   auditoriaVisualizar: 'auditoria.ler',
+  jurimetriaVisualizar: 'jurimetria.ler',
+  valoresVisualizar: 'processos.valores.ler',
+  documentoClienteVisualizar: 'clientes.documento.ler',
+  processosExcluir: 'processos.excluir',
+  clientesExcluir: 'clientes.excluir',
 } as const;
 
 export type Capability = string;
@@ -52,3 +57,14 @@ export const statusMembroLabels: Record<StatusMembro, string> = {
 };
 
 export const papeisDisponiveis = Object.keys(papelLabels) as PapelMembro[];
+
+export type Convite = {
+  id: string;
+  email: string;
+  papel: PapelMembro;
+  criado_em: string;
+  expira_em: string;
+};
+
+// Proprietário não se concede por convite: a transferência passa pela edição do membro.
+export const papeisConvidaveis: PapelMembro[] = ['ADMIN', 'ADVOGADO', 'ESTAGIARIO'];

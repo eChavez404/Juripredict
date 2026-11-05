@@ -1,7 +1,10 @@
+from zoneinfo import available_timezones
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Escritorio, MembroEscritorio
+from .emails import uma_linha
+from .models import ConviteEscritorio, Escritorio, MembroEscritorio
 
 
 class UsuarioMembroSerializer(serializers.ModelSerializer):
@@ -33,6 +36,15 @@ class EscritorioSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "ativo", "criado_em", "atualizado_em")
 
+    def validate_nome(self, value):
+        return uma_linha(value)
+
+    def validate_fuso_horario(self, value):
+        # Um fuso inválido faria os lembretes do escritório falharem em silêncio.
+        if value not in available_timezones():
+            raise serializers.ValidationError("Informe um fuso horário válido, como America/Sao_Paulo.")
+        return value
+
 
 class MembroEscritorioSerializer(serializers.ModelSerializer):
     usuario = UsuarioMembroSerializer(read_only=True)
@@ -57,3 +69,10 @@ class MembroEscritorioSerializer(serializers.ModelSerializer):
             "atualizado_em",
         )
 
+
+
+class ConviteEscritorioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConviteEscritorio
+        fields = ("id", "email", "papel", "criado_em", "expira_em")
+        read_only_fields = ("id", "criado_em", "expira_em")

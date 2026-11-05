@@ -10,6 +10,7 @@ import Equipe from './Equipe';
 
 vi.mock('../features/escritorios/api', () => ({
   equipeService: { list: vi.fn(), update: vi.fn() },
+  conviteService: { list: vi.fn().mockResolvedValue([]), create: vi.fn(), revoke: vi.fn() },
 }));
 
 vi.mock('../features/auditoria/api', () => ({
@@ -38,6 +39,7 @@ const authValue: AuthContextValue = {
   activeMembership: membro,
   loading: false,
   login: vi.fn(),
+  startSession: vi.fn(),
   updateUser: vi.fn(),
   selectEscritorio: vi.fn(),
   hasCapability: (capability) => capabilities.includes(capability),

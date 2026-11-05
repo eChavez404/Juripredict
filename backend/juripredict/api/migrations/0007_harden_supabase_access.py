@@ -57,7 +57,17 @@ def restringir_api_publica_supabase(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("api", "0006_office_owned_data")]
+    # Uma dependência por app de DJANGO_TABLES: em banco novo, sem elas, o Django pode
+    # rodar esta migração antes de as tabelas existirem. Bancos já migrados não mudam.
+    dependencies = [
+        ("api", "0006_office_owned_data"),
+        ("admin", "0003_logentry_add_action_flag_choices"),
+        ("auditlog", "0001_initial"),
+        ("auth", "0012_alter_user_first_name_max_length"),
+        ("contenttypes", "0002_remove_content_type_name"),
+        ("organizations", "0001_initial"),
+        ("sessions", "0001_initial"),
+    ]
 
     operations = [
         migrations.RunPython(

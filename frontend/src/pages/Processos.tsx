@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { FileText, Filter, Link as LinkIcon, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, Filter, History, Link as LinkIcon, Paperclip, Pencil, Plus, Trash2 } from 'lucide-react';
+import PermissionGate from '../components/auth/PermissionGate';
+import AndamentosModal from '../components/processos/AndamentosModal';
+import DocumentosModal from '../components/processos/DocumentosModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Feedback from '../components/ui/Feedback';
 import Modal from '../components/ui/Modal';
 import PageHeader from '../components/ui/PageHeader';
 import SearchField from '../components/ui/SearchField';
 import ViewToggle from '../components/ui/ViewToggle';
+import { CAPABILITIES } from '../features/escritorios/types';
 import useViewPreference from '../hooks/useViewPreference';
 import { getApiError } from '../services/api';
 import { clienteService, processoService } from '../services/juripredict';
@@ -65,6 +69,8 @@ const Processos = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Processo | null>(null);
   const [deleting, setDeleting] = useState<Processo | null>(null);
+  const [acompanhando, setAcompanhando] = useState<Processo | null>(null);
+  const [anexando, setAnexando] = useState<Processo | null>(null);
   const [form, setForm] = useState<ProcessoForm>(emptyForm);
   const [view, setView] = useViewPreference('juripredict:processos-view');
 
@@ -166,8 +172,12 @@ const Processos = () => {
       {processo.arquivo_peticao_inicial_url && (
         <a className="action-button" href={processo.arquivo_peticao_inicial_url} target="_blank" rel="noreferrer" aria-label={`Abrir documento do processo ${processo.numero_cnj}`}><LinkIcon size={15} /></a>
       )}
+      <button className="action-button" type="button" aria-label={`Ver documentos do processo ${processo.numero_cnj}`} onClick={() => setAnexando(processo)}><Paperclip size={15} /></button>
+      <button className="action-button" type="button" aria-label={`Ver andamentos do processo ${processo.numero_cnj}`} onClick={() => setAcompanhando(processo)}><History size={15} /></button>
       <button className="action-button" type="button" aria-label={`Editar processo ${processo.numero_cnj}`} onClick={() => openEdit(processo)}><Pencil size={15} /></button>
-      <button className="action-button action-button--danger" type="button" aria-label={`Excluir processo ${processo.numero_cnj}`} onClick={() => setDeleting(processo)}><Trash2 size={15} /></button>
+      <PermissionGate capability={CAPABILITIES.processosExcluir}>
+        <button className="action-button action-button--danger" type="button" aria-label={`Excluir processo ${processo.numero_cnj}`} onClick={() => setDeleting(processo)}><Trash2 size={15} /></button>
+      </PermissionGate>
     </div>
   );
 
@@ -276,7 +286,9 @@ const Processos = () => {
             <label className="form-field"><span>Comarca</span><input value={form.comarca} onChange={(event) => setForm({ ...form, comarca: event.target.value })} required /></label>
             <label className="form-field"><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ProcessoStatus })}><option value="ATIVO">Ativo</option><option value="SUSPENSO">Suspenso</option><option value="ARQUIVADO">Arquivado</option></select></label>
             <label className="form-field"><span>Resultado</span><select value={form.resultado} onChange={(event) => setForm({ ...form, resultado: event.target.value as ProcessoResultado })}><option value="PENDENTE">Pendente</option><option value="FAVORAVEL">Favorável</option><option value="DESFAVORAVEL">Desfavorável</option><option value="ACORDO">Acordo</option></select></label>
-            <label className="form-field"><span>Valor da causa</span><input type="number" min="0" step="0.01" value={form.valor_causa} onChange={(event) => setForm({ ...form, valor_causa: event.target.value })} /></label>
+            <PermissionGate capability={CAPABILITIES.valoresVisualizar}>
+              <label className="form-field"><span>Valor da causa</span><input type="number" min="0" step="0.01" value={form.valor_causa} onChange={(event) => setForm({ ...form, valor_causa: event.target.value })} /></label>
+            </PermissionGate>
             <label className="form-field"><span>Data de distribuição</span><input type="date" value={form.data_distribuicao} onChange={(event) => setForm({ ...form, data_distribuicao: event.target.value })} /></label>
             <label className="form-field form-field--full"><span>Observações</span><textarea rows={3} value={form.observacoes} onChange={(event) => setForm({ ...form, observacoes: event.target.value })} /></label>
             <label className="form-field form-field--full"><span>Petição inicial</span><input type="file" accept=".pdf,.doc,.docx" onChange={(event) => setForm({ ...form, arquivo: event.target.files?.[0] ?? null })} /></label>
@@ -284,6 +296,9 @@ const Processos = () => {
           <div className="form-actions"><button className="button button--secondary" type="button" onClick={() => setModalOpen(false)} disabled={busy}>Cancelar</button><button className="button button--primary" type="submit" disabled={busy}>{busy ? 'Salvando...' : 'Salvar processo'}</button></div>
         </form>
       </Modal>
+
+      <AndamentosModal processo={acompanhando} onClose={() => setAcompanhando(null)} />
+      <DocumentosModal processo={anexando} onClose={() => setAnexando(null)} />
 
       <ConfirmDialog open={Boolean(deleting)} title="Excluir processo" message={`Deseja excluir o processo ${deleting?.numero_cnj ?? ''}? Os eventos vinculados serão mantidos sem o processo.`} busy={busy} onCancel={() => setDeleting(null)} onConfirm={handleDelete} />
     </div>

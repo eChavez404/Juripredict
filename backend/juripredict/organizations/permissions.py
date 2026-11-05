@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
+from .capabilities import request_tem_capability
 from .context import contexto_escritorio_da_request
 from .models import MembroEscritorio
 
@@ -35,3 +36,15 @@ class PodeLerAuditoria(BasePermission):
             MembroEscritorio.Papel.ADMIN,
         }
 
+
+def exige_capability(capability):
+    """Fabrica uma permissão que só deixa passar quem tem a capability no escritório."""
+
+    class TemCapability(BasePermission):
+        message = "O seu papel neste escritório não permite esta ação."
+
+        def has_permission(self, request, view):
+            return request_tem_capability(request, capability)
+
+    TemCapability.__name__ = f"TemCapability[{capability}]"
+    return TemCapability

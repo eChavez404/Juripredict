@@ -11,6 +11,7 @@ const authValue = (capabilities: string[]): AuthContextValue => ({
   activeMembership: null,
   loading: false,
   login: vi.fn(),
+  startSession: vi.fn(),
   updateUser: vi.fn(),
   selectEscritorio: vi.fn(),
   hasCapability: (capability) => capabilities.includes(capability),

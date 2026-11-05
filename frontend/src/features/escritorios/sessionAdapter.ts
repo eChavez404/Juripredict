@@ -36,6 +36,9 @@ const normalizeUsuario = (value: unknown, fallback?: Usuario): Usuario => {
     username: asString(source.username, fallback?.username ?? ''),
     email: asString(source.email, fallback?.email ?? ''),
     nome: asString(source.nome ?? source.name, fallback?.nome ?? ''),
+    email_verificado: typeof source.email_verificado === 'boolean'
+      ? source.email_verificado
+      : fallback?.email_verificado,
   };
 };
 

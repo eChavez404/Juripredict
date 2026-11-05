@@ -13,6 +13,8 @@ class EventoAuditoriaViewSet(EscritorioContextMixin, viewsets.ReadOnlyModelViewS
     permission_classes = (IsAuthenticated, TemContextoEscritorio, PodeLerAuditoria)
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return EventoAuditoria.objects.none()
         return EventoAuditoria.objects.filter(
             escritorio=self.get_escritorio()
         ).select_related("ator")

@@ -197,8 +197,9 @@ docker compose up --build
 ```
 
 O frontend fica em `http://localhost` e a API em `http://localhost:8000/api/v1/`.
-O procedimento de publicação, backup e restauração no Fly.io está em
-[`DEPLOYMENT.md`](DEPLOYMENT.md).
+A hospedagem escolhida por ora é o **Render** (`render.yaml`, que também declara os
+agendamentos). O `fly.toml` e o [`DEPLOYMENT.md`](DEPLOYMENT.md) descrevem a alternativa no
+Fly.io e não estão em uso.
 
 **Coleta** (a partir de `dataset/`):
 
@@ -304,7 +305,26 @@ redefinido antes de o número significar alguma coisa.
 | Auditoria de cobertura | amostra coletada, denominador em revisão |
 | Extração de variáveis de conteúdo | previsto, depende do gold set |
 | API e interface de gestão | CRUD integrado de clientes, processos, agenda e indicadores |
+| Cadastro, convite de equipe e recuperação de senha | implementado e testado; depende de configurar o envio de e-mail |
+| Lembretes de prazo e audiência por e-mail | implementado e testado; depende de agendar o comando |
+| Confirmação de e-mail no cadastro | implementado e testado; não bloqueia o login (aviso no app) |
+| Andamento automático dos processos (DataJud) | implementado e testado; avisa por e-mail as novidades; depende da chave do DataJud e do cron; TRTs e TRFs |
+| Documentação da API | OpenAPI 3 em `backend/openapi.yaml`, conferida por teste; Swagger UI em `/api/docs/` só em desenvolvimento |
+| Papéis aplicados no servidor | estagiário não vê valor da causa nem jurimetria, vê CPF/CNPJ mascarado e não exclui; regras padrão a confirmar com o escritório |
+| Servidor MCP somente leitura (`mcp_server/`) | implementado e testado ponta a ponta; token de API revogável, rotas fixas e toda consulta auditada; sem OAuth |
+| Vários documentos por processo | implementado e testado; até 50 por processo; depende do R2 em produção |
+| LGPD: aceite dos termos, exportação e exclusão de conta | implementado e testado; texto jurídico em revisão |
+| Sessões | renovação com rotação e logout que revoga no servidor |
+| Jurimetria da carteira | taxa sempre com n e intervalo de confiança; suprimida abaixo de 10 processos; filtros por área e ano, comparação por vara e por ano, lista dos processos que sustentam cada número e exportação em CSV |
+| Cálculo de prazos | dias úteis (CLT e CPC) com memória do cálculo; só não conta o que é certo, e o incerto é sinalizado; vira compromisso na agenda a partir de um andamento |
+| Central de pendências | prazos vencidos, próximos 7 dias e andamentos recentes no sino do topo |
 | Modelo preditivo | condicionado à medição de erro |
+
+**Plataforma: o que falta para abrir a clientes.** O código está pronto e testado, mas
+quatro itens dependem de configuração fora dele: um provedor de e-mail (sem ele, convite,
+recuperação de senha e confirmação de e-mail não chegam), o armazenamento de arquivos em R2 (sem ele, as petições
+enviadas somem a cada deploy), um plano pago com backup do banco, e a revisão dos Termos e
+da Política de Privacidade por um advogado. Os detalhes estão em `backend/README.md`.
 
 **O que o dataset sustenta hoje:** desenvolvimento do pipeline e jurimetria
 descritiva com ressalva. **O que não sustenta:** afirmar que uma vara defere

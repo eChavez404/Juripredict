@@ -1,5 +1,7 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 
 class Cliente(models.Model):
@@ -87,6 +89,7 @@ class Processo(models.Model):
     valor_causa = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     data_distribuicao = models.DateField(null=True, blank=True)
     observacoes = models.TextField(blank=True)
+    andamentos_sincronizados_em = models.DateTimeField(null=True, blank=True)
     arquivo_peticao_inicial = models.FileField(
         upload_to="processos/peticoes/", blank=True, null=True
     )
@@ -146,6 +149,9 @@ class EventoAgenda(models.Model):
     local = models.CharField(max_length=255, blank=True)
     descricao = models.TextField(blank=True)
     concluido = models.BooleanField(default=False)
+    # Preenchido quando o lembrete por e-mail sai. É o que impede o aviso de se
+    # repetir a cada execução do agendador.
+    lembrete_enviado_em = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -160,3 +166,72 @@ class EventoAgenda(models.Model):
 
     def __str__(self):
         return self.titulo
+
+
+class Andamento(models.Model):
+    """Movimento do processo lido do DataJud.
+
+    A tupla (processo, data_hora, codigo, nome) é a identidade: sincronizar de
+    novo não duplica o que já foi lido.
+    """
+
+    processo = models.ForeignKey(Processo, on_delete=models.CASCADE, related_name="andamentos")
+    data_hora = models.DateTimeField()
+    codigo = models.PositiveIntegerField(null=True, blank=True)
+    nome = models.CharField(max_length=255)
+    complemento = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("-data_hora", "-id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("processo", "data_hora", "codigo", "nome"),
+                name="andamento_unico_por_processo",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.processo_id} {self.data_hora:%Y-%m-%d} {self.nome}"
+
+
+class DocumentoProcesso(models.Model):
+    """Arquivo anexado a um processo (petições, provas, decisões...)."""
+
+    processo = models.ForeignKey(Processo, on_delete=models.CASCADE, related_name="documentos")
+    arquivo = models.FileField(upload_to="processos/documentos/")
+    nome = models.CharField(max_length=255)
+    tamanho = models.PositiveIntegerField()
+    enviado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="documentos_enviados",
+        null=True,
+        blank=True,
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-criado_em", "-id")
+
+    def __str__(self):
+        return self.nome
+
+
+def apagar_arquivo_depois_do_commit(arquivo):
+    """Só após o commit: se a transação desfizer, o arquivo precisa continuar lá."""
+    if arquivo:
+        transaction.on_commit(lambda: arquivo.storage.delete(arquivo.name))
+
+
+@receiver(post_delete, sender=DocumentoProcesso)
+def _apagar_arquivo_do_storage(sender, instance, **kwargs):
+    """Sem isto o arquivo ficaria no storage depois que o registro some.
+
+    Vale também para a exclusão em cascata (processo apagado).
+    """
+    apagar_arquivo_depois_do_commit(instance.arquivo)
+
+
+@receiver(post_delete, sender=Processo)
+def _apagar_peticao_do_storage(sender, instance, **kwargs):
+    apagar_arquivo_depois_do_commit(instance.arquivo_peticao_inicial)
