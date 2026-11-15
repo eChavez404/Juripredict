@@ -46,11 +46,6 @@ if not FIELD_ENCRYPTION_KEY:
     FIELD_ENCRYPTION_KEY = SECRET_KEY
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
-FLY_APP_NAME = os.getenv("FLY_APP_NAME", "").strip()
-if FLY_APP_NAME:
-    fly_hostname = f"{FLY_APP_NAME}.fly.dev"
-    if fly_hostname not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append(fly_hostname)
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
 if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -265,10 +260,6 @@ TERMOS_VERSAO = os.getenv("TERMOS_VERSAO", "2026-10")
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
-if FLY_APP_NAME:
-    fly_origin = f"https://{FLY_APP_NAME}.fly.dev"
-    if fly_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(fly_origin)
 if RENDER_EXTERNAL_HOSTNAME:
     render_origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
     if render_origin not in CSRF_TRUSTED_ORIGINS:
@@ -291,7 +282,7 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    # Atrás de proxy (Render, Fly) o IP real vem no X-Forwarded-For. Sem isto,
+    # Atrás do proxy do Render o IP real vem no X-Forwarded-For. Sem isto,
     # todo mundo parece vir do mesmo endereço e o limite vira global.
     "NUM_PROXIES": int(os.getenv("NUM_PROXIES", "0" if DEBUG else "1")),
     "DEFAULT_THROTTLE_RATES": {

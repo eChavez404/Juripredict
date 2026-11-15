@@ -205,7 +205,7 @@ de tribunal gravado no sistema; quando houver, ele alimenta `suspensoes`.
 | `EMAIL_HOST` e credenciais | convite, recuperação de senha e lembretes não chegam |
 | `USE_R2_STORAGE=true` com as credenciais | petições enviadas somem a cada deploy |
 | Plano pago com backup do banco | banco de teste pode expirar e não há cópia |
-| `NUM_PROXIES` (1 no Render e no Fly) | o limite de requisições enxerga todos como um só IP |
+| `NUM_PROXIES` (1 no Render) | o limite de requisições enxerga todos como um só IP |
 | `SENTRY_DSN` (opcional) | erros em produção passam despercebidos |
 | agendador dos dois comandos acima | sem lembretes, e a lista de tokens só cresce |
 

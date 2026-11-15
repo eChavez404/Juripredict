@@ -198,8 +198,7 @@ docker compose up --build
 
 O frontend fica em `http://localhost` e a API em `http://localhost:8000/api/v1/`.
 A hospedagem escolhida por ora é o **Render** (`render.yaml`, que também declara os
-agendamentos). O `fly.toml` e o [`DEPLOYMENT.md`](DEPLOYMENT.md) descrevem a alternativa no
-Fly.io e não estão em uso.
+agendamentos).
 
 **Coleta** (a partir de `dataset/`):
 
