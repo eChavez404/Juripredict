@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Bot, Copy, Plus } from 'lucide-react';
+import { Bot, Copy, Plug, Plus } from 'lucide-react';
 import Feedback from '../ui/Feedback';
 import Modal from '../ui/Modal';
 import { contaService } from '../../features/conta/api';
-import type { TokenApi, TokenApiCriado } from '../../features/conta/types';
+import type { ConexaoOAuth, TokenApi, TokenApiCriado } from '../../features/conta/types';
 import { getApiError } from '../../services/api';
 
 const formatar = (valor: string | null) => (
@@ -18,6 +18,7 @@ const situacao = (token: TokenApi) => {
 /** Credenciais somente leitura para agentes (MCP). O texto do token aparece uma única vez. */
 const TokensApiPanel = () => {
   const [tokens, setTokens] = useState<TokenApi[]>([]);
+  const [conexoes, setConexoes] = useState<ConexaoOAuth[]>([]);
   const [erro, setErro] = useState('');
   const [criarAberto, setCriarAberto] = useState(false);
   const [nome, setNome] = useState('');
@@ -30,7 +31,12 @@ const TokensApiPanel = () => {
 
   const carregar = useCallback(async () => {
     try {
-      setTokens(await contaService.listarTokens());
+      const [listaTokens, listaConexoes] = await Promise.all([
+        contaService.listarTokens(),
+        contaService.listarConexoes(),
+      ]);
+      setTokens(listaTokens);
+      setConexoes(listaConexoes);
     } catch (requestError) {
       setErro(getApiError(requestError));
     }
@@ -75,6 +81,16 @@ const TokensApiPanel = () => {
     }
   };
 
+  const desconectar = async (conexao: ConexaoOAuth) => {
+    setErro('');
+    try {
+      await contaService.revogarConexao(conexao.id);
+      await carregar();
+    } catch (requestError) {
+      setErro(getApiError(requestError));
+    }
+  };
+
   const copiar = async () => {
     if (!criado) return;
     try {
@@ -108,6 +124,32 @@ const TokensApiPanel = () => {
           senha ou excluir a conta revoga todos.
         </p>
 
+        <h3 className="settings-card__subtitulo">Aplicativos conectados</h3>
+        {conexoes.length === 0 ? (
+          <p className="andamentos__vazio">Nenhum aplicativo conectado.</p>
+        ) : (
+          <ul className="documentos__lista">
+            {conexoes.map((conexao) => (
+              <li key={conexao.id}>
+                <Plug size={16} aria-hidden="true" />
+                <span>{conexao.aplicativo} <small>({conexao.escritorio})</small></span>
+                <small>
+                  conectado em {formatar(conexao.criado_em)} · último uso {formatar(conexao.ultimo_uso_em)}
+                </small>
+                <button
+                  className="button button--secondary button--small"
+                  type="button"
+                  onClick={() => void desconectar(conexao)}
+                  aria-label={`Desconectar ${conexao.aplicativo}`}
+                >
+                  Desconectar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h3 className="settings-card__subtitulo">Tokens criados à mão</h3>
         {tokens.length === 0 ? (
           <p className="andamentos__vazio">Nenhum token criado.</p>
         ) : (
