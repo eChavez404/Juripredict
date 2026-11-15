@@ -3,7 +3,7 @@
 Layout:
 
     data/
-      raw/falcao/searches/<slug>/page_0000.json     pagina exata como recebida
+      raw/falcao/searches/<slug>/page_0000.json     pagina, com documentos so por id
       raw/falcao/documents/<idSentenca>.json        documento exato
       manifests/falcao.sqlite                       indice
       normalized/<slug>/<idSentenca>.txt            texto limpo (derivado)
@@ -123,15 +123,17 @@ class Armazenamento:
 
     # gravacao
     def gravar_pagina(self, consulta: Consulta, pagina: Pagina, http_status: int = 200, force: bool = False) -> Path:
-        """Grava o JSON EXATO da pagina. Nao reordena, nao filtra, nao formata
-        de outro jeito alem da indentacao."""
+        """Grava o JSON da pagina com cada documento trocado pelo seu id, na
+        ordem recebida. O documento inteiro ja fica exato em documents/;
+        repeti-lo aqui dobrava o disco (~100 KB por documento)."""
         caminho = self.caminho_pagina(consulta, pagina.numero)
         caminho.parent.mkdir(parents=True, exist_ok=True)
 
         if caminho.exists() and not force:
             log.info("pagina %s ja existe; mantida", pagina.numero)
         else:
-            conteudo = json.dumps(pagina.bruto, ensure_ascii=False, indent=2)
+            bruto = {**pagina.bruto, "documentos": [d.id_sentenca for d in pagina.documentos]}
+            conteudo = json.dumps(bruto, ensure_ascii=False, indent=2)
             caminho.write_text(conteudo, encoding="utf-8")
 
         texto = caminho.read_text(encoding="utf-8")

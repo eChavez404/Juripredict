@@ -1,5 +1,6 @@
 import re
 from datetime import timedelta
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -175,6 +176,15 @@ class ConviteApiTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["novo@example.com"])
         self.assertTrue(EventoAuditoria.objects.filter(acao="convite.criado").exists())
+
+    def test_falha_de_smtp_nao_derruba_o_convite(self):
+        # em produção um remetente recusado pelo SMTP virava 500 depois de gravar o convite
+        with mock.patch("organizations.emails.send_mail", side_effect=OSError("smtp recusou")):
+            with self.assertLogs("organizations.services", level="ERROR"):
+                resposta = self._convidar()
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(ConviteEscritorio.objects.exists())
 
     def test_token_nao_vaza_na_resposta_nem_no_banco(self):
         resposta = self._convidar()

@@ -209,9 +209,11 @@ else:
             "EMAIL_HOST não configurado: e-mails vão para o console e não chegam "
             "a ninguém. Defina EMAIL_HOST antes de aceitar usuários reais."
         )
+# O "Add from .env" do Render mantém aspas em volta do valor, e com elas o
+# servidor SMTP recusa o remetente (501). Elas nunca fazem parte do endereço.
 DEFAULT_FROM_EMAIL = os.getenv(
     "DEFAULT_FROM_EMAIL", "JuriPredict <nao-responda@juripredict.local>"
-)
+).strip().strip("\"'")
 
 # Base dos links enviados por e-mail.
 FRONTEND_URL = os.getenv(

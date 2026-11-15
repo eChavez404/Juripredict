@@ -5,10 +5,12 @@ from django.contrib.auth import get_user_model
 from django.core import mail, signing
 from django.test import override_settings
 from django.urls import reverse
+from django.utils.html import escape
 from rest_framework import status
 
 from accounts.models import EmailVerificado
 from accounts.services import enviar_verificacao
+from organizations.emails import corpo_html
 from organizations.models import ConviteEscritorio, Escritorio, MembroEscritorio
 from organizations.services import convidar_membro
 
@@ -35,6 +37,18 @@ class VerificacaoEmailTests(ContaTestCase):
         self.assertEqual(mail.outbox[0].to, ["maria@escritorio.com"])
         self.assertIn("/confirmar-email?token=", mail.outbox[0].body)
         self.assertFalse(EmailVerificado.objects.filter(usuario=usuario).exists())
+
+    def test_email_tem_versao_html_com_o_mesmo_link(self):
+        self._registrar()
+        html, tipo = mail.outbox[0].alternatives[0]
+        link = re.search(r"\S+/confirmar-email\?token=\S+", mail.outbox[0].body).group(0)
+        self.assertEqual(tipo, "text/html")
+        self.assertIn(f'href="{escape(link)}"', html)
+
+    def test_html_do_email_escapa_texto_de_quem_usa_o_sistema(self):
+        html = corpo_html(titulo="Convite", paragrafos=["Escritório <script>alert(1)</script>"])
+        self.assertNotIn("<script>", html)
+        self.assertIn("&lt;script&gt;", html)
 
     def test_cadastro_nao_depende_do_envio_do_email(self):
         # falha de SMTP não pode impedir a pessoa de criar a conta nem devolver erro
