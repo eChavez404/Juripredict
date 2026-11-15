@@ -25,10 +25,11 @@ class Consulta:
         Usa as datas INTEIRAS. A primeira versao usava so o ano, e isso fez
         todas as janelas mensais do mesmo ano colidirem: a segunda janela
         encontrava as paginas da primeira, concluia "ja baixei" e pulava tudo.
-        Meses inteiros foram perdidos em silencio.
+        Meses inteiros foram perdidos em silencio. Pelo mesmo motivo leva a
+        colecao: sem ela, os acordaos achavam as paginas das sentencas.
         """
         t = self.texto.lower().replace(" ", "-")
-        return (f"{t}_{self.tribunal.lower()}_"
+        return (f"{t}_{self.tribunal.lower()}_{self.colecao}_"
                 f"{self.data_inicio}_{self.data_fim}")
 
     def params(self, session_id: str, page: int, size: int) -> dict:
@@ -71,26 +72,42 @@ class Documento:
 
     @classmethod
     def de_json(cls, d: dict) -> "Documento":
-        def s(chave: str) -> Optional[str]:
-            v = d.get(chave)
-            return None if v is None else str(v)
+        """Sentencas e acordaos usam chaves diferentes para o mesmo dado; a
+        primeira chave presente vence."""
+        def s(*chaves: str) -> Optional[str]:
+            for chave in chaves:
+                if d.get(chave) is not None:
+                    return str(d[chave])
+            return None
 
         return cls(
-            id_sentenca=str(d.get("idSentenca")),
+            id_sentenca=id_documento(d),
             numero_cnj=s("numeroProcesso"),
             tribunal=s("tribunal"),
             tipo_documento=s("tipoDocumento"),
-            classe_processual=s("classeProcessual"),
-            classe_por_extenso=s("classeProcessualPorExtenso"),
-            orgao_julgador=s("orgaoJulgador"),
-            orgao_por_extenso=s("orgaoJulgadorPorExtenso"),
+            classe_processual=s("classeProcessual", "siglaClasseProcesso"),
+            classe_por_extenso=s("classeProcessualPorExtenso", "classeProcesso"),
+            orgao_julgador=s("orgaoJulgador", "idTurma"),
+            orgao_por_extenso=s("orgaoJulgadorPorExtenso", "turma"),
             fase_processual=s("faseProcessual"),
             data_julgamento=s("dataJulgamento"),
             data_juntada=s("dataJuntada"),
             score=d.get("score"),
-            texto_sentenca=d.get("textoSentenca"),
+            texto_sentenca=d.get("textoSentenca") or d.get("textoAcordao"),
             bruto=d,
         )
+
+
+def id_documento(d: dict) -> str:
+    """Cada colecao traz o id numa chave propria. O prefixo evita que um
+    acordao colida com uma sentenca de mesmo numero no manifest. Sem id
+    conhecido, falha: str(None) gravaria todos os documentos em None.json."""
+    if d.get("idSentenca") is not None:
+        return str(d["idSentenca"])
+    for chave, prefixo in (("idDocumentoAcordao", "acordao"), ("id", "precedente")):
+        if d.get(chave) is not None:
+            return f"{prefixo}-{d[chave]}"
+    raise ErroFalcao(f"documento sem id conhecido; chaves: {sorted(d)}")
 
 
 @dataclass
@@ -126,3 +143,17 @@ class ErroFalcao(RuntimeError):
 
 class ErroSessao(ErroFalcao):
     """Sessao ausente, invalida ou expirada."""
+
+class ErroPagina(ErroFalcao):
+    """HTTP 400 numa pagina: o servidor nao conseguiu monta-la, em geral por um
+    documento que ele nao devolve. Observado em 2025-03, sentencas."""
+
+
+class ErroLimite(ErroFalcao):
+    """HTTP 429: cota de requisicoes esgotada. Observado em 2026-11-15: cota
+    diaria (~140 requisicoes) que libera a meia-noite de Brasilia, informada
+    no cabecalho x-rate-limit-retry-after-seconds. Insistir nao adianta."""
+
+    def __init__(self, mensagem_usuario: str, espera_s: int = 0):
+        super().__init__(mensagem_usuario)
+        self.espera_s = espera_s

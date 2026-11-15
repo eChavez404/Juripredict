@@ -14,10 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from collector.audit import auditar_lote, auditar_manifest
 from collector.client import PAGE_SIZE_MAX, ClienteFalcao
 from collector.collector import coletar
-from collector.models import Consulta, Documento, ErroFalcao, ErroSessao, Pagina
+from collector.models import Consulta, Documento, ErroFalcao, ErroLimite, ErroPagina, ErroSessao, Pagina
 from collector.normalize import contar_base64, html_para_texto
 from collector.session import valido, mascarar
 from collector.storage import Armazenamento, sha256
+from collector.varrer import janelas, meses
 
 CONSULTA = Consulta("insalubridade", "TRT16", "sentencas", "2024-01-01", "2026-08-18")
 
@@ -200,6 +201,22 @@ def test_falha_de_sessao_interrompe_sem_apagar_o_que_ja_veio(tmp_path):
     assert res.documentos_novos == 1
 
 
+def test_pagina_que_o_servidor_nao_monta_e_refeita_em_metades_e_a_coleta_segue(tmp_path):
+    class ClienteDocRuim(ClienteFalso):
+        def buscar_pagina(self, consulta, page, size=PAGE_SIZE_MAX):
+            if (page, size) in ((1, 10), (3, 5)):          # o 2o item da metade e ruim
+                raise ErroPagina("HTTP 400")
+            docs = {(0, 10): [doc("A")], (2, 5): [doc("B1")], (2, 10): [doc("C")]}[(page, size)]
+            return Pagina.de_json(page, {"documentos": docs, "quantidadeTotal": 3})
+
+    arm = Armazenamento(str(tmp_path))
+    res = coletar(ClienteDocRuim([]), arm, CONSULTA, paginas=3, normalizar=False)
+    gravadas = [p for (p,) in arm.con.execute("SELECT page FROM paginas ORDER BY page")]
+    arm.fechar()
+    assert res.documentos_novos == 3
+    assert gravadas == [0, 2]                           # a pagina 1 fica pendente
+
+
 def test_erro_de_negocio_vira_excecao(tmp_path):
     class ClienteRecusa(ClienteFalso):
         def buscar_pagina(self, consulta, page, size=PAGE_SIZE_MAX):
@@ -209,6 +226,40 @@ def test_erro_de_negocio_vira_excecao(tmp_path):
     res = coletar(ClienteRecusa([]), arm, CONSULTA, paginas=1, normalizar=False)
     arm.fechar()
     assert res.paginas_baixadas == 0
+
+
+def test_429_para_na_hora_informa_a_liberacao_e_atravessa_a_coleta(tmp_path):
+    class Resposta:
+        status_code = 429
+        headers = {"x-rate-limit-retry-after-seconds": "36540"}
+        text = '{"userMessage":"Too Many Requests"}'
+
+    class Sessao:
+        chamadas = 0
+        def get(self, *a, **k):
+            Sessao.chamadas += 1
+            return Resposta()
+
+    cliente = ClienteFalcao(Sessao(), "_abc123", pausa_min=0, pausa_max=0)
+    with pytest.raises(ErroLimite) as e:
+        cliente.buscar_pagina(CONSULTA, 0)
+    assert e.value.espera_s == 36540 and Sessao.chamadas == 1      # sem insistir
+
+    arm = Armazenamento(str(tmp_path))
+    with pytest.raises(ErroLimite):                                 # quem chama decide
+        coletar(cliente, arm, CONSULTA, paginas=1, normalizar=False)
+    arm.fechar()
+
+
+def test_pagina_0_ja_obtida_nao_e_pedida_de_novo(tmp_path):
+    cliente = ClienteFalso([[doc("A")], [doc("B")]])
+    primeira = cliente.buscar_pagina(CONSULTA, 0)
+    cliente.chamadas.clear()
+    arm = Armazenamento(str(tmp_path))
+    res = coletar(cliente, arm, CONSULTA, paginas=2, normalizar=False, primeira=primeira)
+    arm.fechar()
+    assert [p for p, _ in cliente.chamadas] == [1]
+    assert res.documentos_novos == 2
 
 
 def test_formato_do_session_id():
@@ -253,3 +304,29 @@ def test_html_vazio_ou_nulo():
 def test_hash_estavel():
     assert sha256("abc") == sha256("abc")
     assert sha256("abc") != sha256("abd")
+
+def test_acordao_tem_id_e_texto_proprios_e_documento_sem_id_falha():
+    a = Documento.de_json({"idDocumentoAcordao": 77, "textoAcordao": "<p>a</p>",
+                           "turma": "1a Turma", "siglaClasseProcesso": "ROT"})
+    assert (a.id_sentenca, a.texto_sentenca, a.orgao_por_extenso) == ("acordao-77", "<p>a</p>", "1a Turma")
+    assert Documento.de_json(doc("123")).id_sentenca == "123"
+    with pytest.raises(ErroFalcao):
+        Documento.de_json({"textoSentenca": "<p>sem id</p>"})
+
+
+# varredura
+def test_varredura_cobre_o_periodo_sem_buraco_nem_sobreposicao():
+    from datetime import date, timedelta
+    contar = lambda a, b: (b - a).days + 1          # 1 documento por dia
+    js = janelas(date(2025, 1, 1), date(2025, 1, 31), contar, limite=10)
+    assert all(t < 10 for _, _, t in js)
+    assert sum(t for _, _, t in js) == 31
+    assert js[0][0] == date(2025, 1, 1) and js[-1][1] == date(2025, 1, 31)
+    assert all(b[0] == a[1] + timedelta(days=1) for a, b in zip(js, js[1:]))
+    # total truncado no teto tambem divide; um dia acima do teto volta inteiro
+    assert janelas(date(2025, 1, 1), date(2025, 1, 1), lambda a, b: 99, 10) == [
+        (date(2025, 1, 1), date(2025, 1, 1), 99)]
+    assert list(meses(date(2024, 1, 15), date(2024, 3, 10))) == [
+        (date(2024, 1, 15), date(2024, 1, 31)),
+        (date(2024, 2, 1), date(2024, 2, 29)),
+        (date(2024, 3, 1), date(2024, 3, 10))]
