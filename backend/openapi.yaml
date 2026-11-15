@@ -62,6 +62,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventoAuditoria'
           description: ''
+  /api/v1/auth/conexoes/:
+    get:
+      operationId: auth_conexoes_list
+      description: |-
+        Gerenciar tokens exige uma sessão de pessoa: um token de API nunca emite nem
+        revoga tokens, nem os lista.
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConexaoOAuth'
+          description: ''
+  /api/v1/auth/conexoes/{conexao_id}/:
+    delete:
+      operationId: auth_conexoes_destroy
+      description: |-
+        Gerenciar tokens exige uma sessão de pessoa: um token de API nunca emite nem
+        revoga tokens, nem os lista.
+      parameters:
+      - in: path
+        name: conexao_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/auth/convites/aceitar/:
     post:
       operationId: auth_convites_aceitar_create
@@ -1359,6 +1397,109 @@ paths:
               schema:
                 $ref: '#/components/schemas/JurimetriaProcessosResposta'
           description: ''
+  /api/v1/oauth/pedido/:
+    get:
+      operationId: oauth_pedido_retrieve
+      description: 'Tela /autorizar: confere o pedido (GET) e grava a decisão da pessoa
+        (POST).'
+      parameters:
+      - in: query
+        name: client_id
+        schema:
+          type: string
+      - in: query
+        name: code_challenge
+        schema:
+          type: string
+      - in: query
+        name: code_challenge_method
+        schema:
+          type: string
+      - in: query
+        name: redirect_uri
+        schema:
+          type: string
+      - in: query
+        name: resource
+        schema:
+          type: string
+      - in: query
+        name: response_type
+        schema:
+          type: string
+      - in: query
+        name: scope
+        schema:
+          type: string
+      - in: query
+        name: state
+        schema:
+          type: string
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - oauth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PedidoOAuth'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPedidoOAuth'
+          description: ''
+    post:
+      operationId: oauth_pedido_create
+      description: 'Tela /autorizar: confere o pedido (GET) e grava a decisão da pessoa
+        (POST).'
+      tags:
+      - oauth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoOAuthRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoOAuthRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsentimentoOAuthRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RedirecionamentoOAuth'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroPedidoOAuth'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
   /api/v1/pendencias/:
     get:
       operationId: pendencias_retrieve
@@ -2039,6 +2180,31 @@ components:
       description: |-
         * `PF` - Pessoa Física
         * `PJ` - Pessoa Jurídica
+    ConexaoOAuth:
+      type: object
+      properties:
+        id:
+          type: integer
+        aplicativo:
+          type: string
+        escritorio_id:
+          type: string
+        escritorio:
+          type: string
+        criado_em:
+          type: string
+          format: date-time
+        ultimo_uso_em:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - aplicativo
+      - criado_em
+      - escritorio
+      - escritorio_id
+      - id
+      - ultimo_uso_em
     ConfirmarEmailRequest:
       type: object
       properties:
@@ -2068,6 +2234,32 @@ components:
       - nova_senha
       - token
       - uid
+    ConsentimentoOAuthRequest:
+      type: object
+      description: Parâmetros do pedido de autorização, repassados pela tela /autorizar.
+      properties:
+        client_id:
+          type: string
+        redirect_uri:
+          type: string
+        response_type:
+          type: string
+        code_challenge:
+          type: string
+        code_challenge_method:
+          type: string
+        state:
+          type: string
+        resource:
+          type: string
+        scope:
+          type: string
+        permitir:
+          type: boolean
+        escritorio_id:
+          type: string
+      required:
+      - permitir
     ConviteEscritorio:
       type: object
       properties:
@@ -2231,6 +2423,15 @@ components:
           writeOnly: true
       required:
       - arquivo
+    ErroPedidoOAuth:
+      type: object
+      properties:
+        detail:
+          type: string
+        redirecionar:
+          type: string
+      required:
+      - detail
     Escritorio:
       type: object
       properties:
@@ -2762,6 +2963,24 @@ components:
             maxLength: 0
         nome:
           type: string
+    PedidoOAuth:
+      type: object
+      properties:
+        aplicativo:
+          type: string
+        destino:
+          type: string
+        escopo:
+          type: string
+        escritorios:
+          type: array
+          items:
+            $ref: '#/components/schemas/EscritorioResumo'
+      required:
+      - aplicativo
+      - destino
+      - escopo
+      - escritorios
     PendenciasResposta:
       type: object
       properties:
@@ -3034,6 +3253,13 @@ components:
       - status
       - titulo
       - vara
+    RedirecionamentoOAuth:
+      type: object
+      properties:
+        redirecionar:
+          type: string
+      required:
+      - redirecionar
     RegistroRequest:
       type: object
       properties:
