@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useAuth } from './contexts/auth';
 
@@ -19,18 +19,23 @@ const Jurimetria = lazy(() => import('./pages/Jurimetria'));
 const Configuracoes = lazy(() => import('./pages/Configuracoes'));
 const Equipe = lazy(() => import('./pages/Equipe'));
 const Auditoria = lazy(() => import('./pages/Auditoria'));
+const Autorizar = lazy(() => import('./pages/Autorizar'));
 
 const PrivateRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="route-loader" role="status" aria-label="Carregando" />;
-  if (!user) return <Navigate to="/login" replace />;
+  // Guarda a página pedida para o login voltar a ela: a tela /autorizar depende disso.
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
   return <>{children}</>;
 };
 
 const PublicRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="route-loader" role="status" aria-label="Carregando" />;
-  return user ? <Navigate to="/" replace /> : <>{children}</>;
+  const destino = (location.state as { from?: Location } | null)?.from ?? '/';
+  return user ? <Navigate to={destino} replace /> : <>{children}</>;
 };
 
 const App = () => (
@@ -46,6 +51,8 @@ const App = () => (
         <Route path="/convite"element={<AceitarConvite />} />
         <Route path="/termos" element={<Termos />} />
         <Route path="/privacidade" element={<Privacidade />} />
+        {/* Consentimento do conector MCP remoto (OAuth): fora do layout do app. */}
+        <Route path="/autorizar" element={<PrivateRoute><Autorizar /></PrivateRoute>} />
 
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<Dashboard />} />

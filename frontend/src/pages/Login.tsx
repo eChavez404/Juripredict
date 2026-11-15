@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { ArrowRight, Lock, Mail } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, type Location } from 'react-router-dom';
 import AuthField from '../components/auth/AuthField';
 import AuthShell from '../components/auth/AuthShell';
 import Feedback from '../components/ui/Feedback';
@@ -14,6 +14,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
@@ -21,7 +22,7 @@ const Login = () => {
     setError('');
     try {
       await login(email, password);
-      navigate('/');
+      navigate((location.state as { from?: Location } | null)?.from ?? '/');
     } catch (requestError) {
       setError(getApiError(requestError));
     } finally {

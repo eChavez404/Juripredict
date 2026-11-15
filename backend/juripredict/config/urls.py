@@ -22,6 +22,14 @@ from django.urls import include, path, re_path
 from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from accounts.views_oauth import (
+    IntrospeccaoOAuthAPIView,
+    MetadadosOAuthAPIView,
+    RegistroClienteOAuthAPIView,
+    RevogarOAuthAPIView,
+    TokenOAuthAPIView,
+)
+
 
 def health_check(_request):
     return JsonResponse({"status": "ok"})
@@ -31,6 +39,13 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('accounts.urls')),
     path('api/v1/', include('api.urls')),
+    # Conector MCP remoto: protocolo OAuth 2.1 (accounts/oauth.py). Sem barra final,
+    # como os aplicativos chamam; a tela de consentimento é a rota /autorizar do SPA.
+    path('.well-known/oauth-authorization-server', MetadadosOAuthAPIView.as_view(), name='oauth-metadados'),
+    path('oauth/registrar', RegistroClienteOAuthAPIView.as_view(), name='oauth-registrar'),
+    path('oauth/token', TokenOAuthAPIView.as_view(), name='oauth-token'),
+    path('oauth/revogar', RevogarOAuthAPIView.as_view(), name='oauth-revogar'),
+    path('oauth/introspeccao', IntrospeccaoOAuthAPIView.as_view(), name='oauth-introspeccao'),
 ]
 
 if settings.DEBUG:
@@ -45,7 +60,7 @@ frontend_index = settings.BASE_DIR / "frontend_dist" / "index.html"
 if frontend_index.exists():
     urlpatterns += [
         re_path(
-            r"^(?!api/|admin/|health/|media/|static/).*$",
+            r"^(?!api/|admin/|health/|media/|static/|oauth/|\.well-known/).*$",
             TemplateView.as_view(template_name="index.html"),
             name="frontend",
         )

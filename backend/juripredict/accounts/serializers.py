@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from organizations.emails import uma_linha
+from organizations.serializers import EscritorioResumoSerializer
 
 from .models import TokenApi
 
@@ -66,3 +67,49 @@ class TokenApiSerializer(serializers.ModelSerializer):
         model = TokenApi
         fields = ("id", "nome", "prefixo", "criado_em", "expira_em", "ultimo_uso_em", "revogado_em", "ativo")
         read_only_fields = fields
+
+
+class ParametrosPedidoOAuthSerializer(serializers.Serializer):
+    """Parâmetros do pedido de autorização, repassados pela tela /autorizar."""
+
+    client_id = serializers.CharField(required=False, allow_blank=True)
+    redirect_uri = serializers.CharField(required=False, allow_blank=True)
+    response_type = serializers.CharField(required=False, allow_blank=True)
+    code_challenge = serializers.CharField(required=False, allow_blank=True)
+    code_challenge_method = serializers.CharField(required=False, allow_blank=True)
+    state = serializers.CharField(required=False, allow_blank=True)
+    resource = serializers.CharField(required=False, allow_blank=True)
+    scope = serializers.CharField(required=False, allow_blank=True)
+
+
+class ConsentimentoOAuthSerializer(ParametrosPedidoOAuthSerializer):
+    permitir = serializers.BooleanField()
+    escritorio_id = serializers.CharField(required=False, allow_blank=True)
+
+
+class PedidoOAuthSerializer(serializers.Serializer):
+    aplicativo = serializers.CharField()
+    # Domínio para onde a pessoa volta. O nome do aplicativo é escolhido por quem o
+    # registrou e pode imitar outro; o domínio de retorno não.
+    destino = serializers.CharField()
+    escopo = serializers.CharField()
+    escritorios = EscritorioResumoSerializer(many=True)
+
+
+class ErroPedidoOAuthSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    # presente quando o erro deve voltar ao aplicativo
+    redirecionar = serializers.CharField(required=False)
+
+
+class RedirecionamentoOAuthSerializer(serializers.Serializer):
+    redirecionar = serializers.CharField()
+
+
+class ConexaoOAuthSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    aplicativo = serializers.CharField(source="cliente.nome")
+    escritorio_id = serializers.CharField()
+    escritorio = serializers.CharField(source="escritorio.nome")
+    criado_em = serializers.DateTimeField()
+    ultimo_uso_em = serializers.DateTimeField(allow_null=True)
