@@ -252,6 +252,17 @@ DATAJUD_API_KEY = os.getenv("DATAJUD_API_KEY", "")
 # Tokens de API (agentes/MCP): validade padrão e quantos podem estar ativos por pessoa.
 API_TOKEN_VALIDADE_DIAS = int(os.getenv("API_TOKEN_VALIDADE_DIAS", "90"))
 API_TOKEN_MAX_ATIVOS = int(os.getenv("API_TOKEN_MAX_ATIVOS", "5"))
+
+# Conector MCP remoto (OAuth 2.1, ver accounts/oauth.py). O emissor é a própria aplicação;
+# OAUTH_RECURSOS lista os servidores MCP que aceitam os tokens (RFC 8707), e o primeiro é o
+# padrão. Sem recurso configurado, o conector fica desligado.
+OAUTH_EMISSOR = os.getenv("OAUTH_EMISSOR", FRONTEND_URL).rstrip("/")
+OAUTH_RECURSOS = env_list("OAUTH_RECURSOS")
+# Só o serviço MCP conhece: é o que o deixa consultar se um token vale (RFC 7662).
+OAUTH_SEGREDO_INTROSPECCAO = os.getenv("OAUTH_SEGREDO_INTROSPECCAO", "")
+OAUTH_ACESSO_SEGUNDOS = int(os.getenv("OAUTH_ACESSO_SEGUNDOS", "3600"))
+OAUTH_RENOVACAO_DIAS = int(os.getenv("OAUTH_RENOVACAO_DIAS", "30"))
+OAUTH_CODIGO_SEGUNDOS = 600
 VERIFICACAO_EMAIL_HORAS = int(os.getenv("VERIFICACAO_EMAIL_HORAS", "72"))
 # Versão vigente dos Termos de Uso e da Política de Privacidade. Mudou o texto,
 # muda a versão: o cadastro grava qual versão cada usuário aceitou.
@@ -298,6 +309,11 @@ REST_FRAMEWORK = {
         "recuperacao_senha": "10/hour",
         "conta_sensivel": "10/hour",
         "andamentos": "30/hour",
+        "oauth_registro": "20/hour",
+        "oauth_token": "300/hour",
+        "oauth_consentimento": "30/hour",
+        # o serviço MCP pergunta por token, com cache curto; todos os usuários saem do mesmo IP
+        "oauth_introspeccao": "20000/hour",
     },
 }
 

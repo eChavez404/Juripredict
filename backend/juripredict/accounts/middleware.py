@@ -50,7 +50,11 @@ class AuditoriaTokenApiMiddleware:
 
     def _registrar(self, request, resposta, token):
         usuario = token.usuario
-        bruto = request.headers.get("X-Escritorio-ID", "")
+        # token de OAuth só enxerga o escritório da conexão; o cabeçalho não vale para ele
+        if token.conexao_id:
+            bruto = str(token.conexao.escritorio_id)
+        else:
+            bruto = request.headers.get("X-Escritorio-ID", "")
         membro = None
         if ID_ESCRITORIO.match(bruto):
             membro = (
@@ -62,6 +66,7 @@ class AuditoriaTokenApiMiddleware:
             )
         tipo, recurso_id, sub = _recurso(request.path)
         negado = resposta.status_code >= 400
+        aplicativo = {"aplicativo": token.conexao.cliente.nome} if token.conexao_id else {}
         if membro is None:
             # sem escritório válido não há log de escritório onde gravar
             if negado:
@@ -85,5 +90,6 @@ class AuditoriaTokenApiMiddleware:
                 "subrecurso": sub,
                 "status": resposta.status_code,
                 "filtros": sorted(request.GET.keys()),
+                **aplicativo,
             },
         )

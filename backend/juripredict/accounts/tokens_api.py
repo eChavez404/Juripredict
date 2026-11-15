@@ -16,7 +16,7 @@ from organizations.models import MembroEscritorio
 from organizations.tokens import gerar_token, hash_token
 
 from .authentication import PREFIXO_TOKEN
-from .models import TokenApi
+from .models import ConexaoOAuth, TokenApi
 
 
 def _auditar(usuario, acao, token):
@@ -40,7 +40,8 @@ def _auditar(usuario, acao, token):
 
 
 def tokens_do_usuario(usuario):
-    return TokenApi.objects.filter(usuario=usuario)
+    """Tokens criados à mão. Os emitidos por OAuth aparecem nos aplicativos conectados."""
+    return TokenApi.objects.filter(usuario=usuario, conexao__isnull=True)
 
 
 @transaction.atomic
@@ -80,8 +81,9 @@ def revogar_token_api(*, usuario, token_id):
 
 
 def revogar_tokens_api(usuario):
-    """Revoga todos (troca de senha, exclusão da conta). Sem auditoria por token:
-    o evento da própria troca de senha já conta o que houve."""
-    return tokens_do_usuario(usuario).filter(revogado_em__isnull=True).update(
-        revogado_em=timezone.now()
-    )
+    """Revoga todos, inclusive os aplicativos conectados por OAuth (troca de senha,
+    exclusão da conta). Sem auditoria por token: o evento da própria troca já conta o
+    que houve."""
+    agora = timezone.now()
+    ConexaoOAuth.objects.filter(usuario=usuario, revogada_em__isnull=True).update(revogada_em=agora)
+    return TokenApi.objects.filter(usuario=usuario, revogado_em__isnull=True).update(revogado_em=agora)

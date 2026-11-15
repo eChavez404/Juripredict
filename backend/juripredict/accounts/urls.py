@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .views_oauth import ConexaoOAuthDetalheAPIView, ConexoesOAuthAPIView, PedidoOAuthAPIView
+
 from .views import (
     AceitarConviteAPIView,
     ConfirmarEmailAPIView,
@@ -22,6 +24,13 @@ urlpatterns = [
         TokenApiDetalheAPIView.as_view(),
         name="token-api-detalhe",
     ),
+    path("auth/conexoes/", ConexoesOAuthAPIView.as_view(), name="conexoes-oauth"),
+    path(
+        "auth/conexoes/<int:conexao_id>/",
+        ConexaoOAuthDetalheAPIView.as_view(),
+        name="conexao-oauth-detalhe",
+    ),
+    path("oauth/pedido/", PedidoOAuthAPIView.as_view(), name="oauth-pedido"),
     path("auth/me/exportar/", ExportarDadosAPIView.as_view(), name="exportar-dados"),
     path("auth/me/excluir/", ExcluirContaAPIView.as_view(), name="excluir-conta"),
     path("auth/email/confirmar/", ConfirmarEmailAPIView.as_view(), name="email-confirmar"),

@@ -5,7 +5,10 @@ import type { TokenApi } from '../../features/conta/types';
 import TokensApiPanel from './TokensApiPanel';
 
 vi.mock('../../features/conta/api', () => ({
-  contaService: { listarTokens: vi.fn(), criarToken: vi.fn(), revogarToken: vi.fn() },
+  contaService: {
+    listarTokens: vi.fn(), criarToken: vi.fn(), revogarToken: vi.fn(),
+    listarConexoes: vi.fn(), revogarConexao: vi.fn(),
+  },
 }));
 
 const token = (extra: Partial<TokenApi> = {}): TokenApi => ({
@@ -17,6 +20,7 @@ describe('TokensApiPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(contaService.listarTokens).mockResolvedValue([]);
+    vi.mocked(contaService.listarConexoes).mockResolvedValue([]);
   });
 
   it('avisa quando ainda não há tokens', async () => {
@@ -96,6 +100,21 @@ describe('TokensApiPanel', () => {
     await waitFor(() => expect(contaService.revogarToken).toHaveBeenCalledWith(1));
     expect(await screen.findByText(/Revogado/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Revogar token/ })).not.toBeInTheDocument();
+  });
+
+  it('lista o aplicativo conectado e o desconecta', async () => {
+    const conexao = {
+      id: 7, aplicativo: 'Claude', escritorio_id: 'e1', escritorio: 'Banca',
+      criado_em: '2026-11-01T10:00:00Z', ultimo_uso_em: null,
+    };
+    vi.mocked(contaService.listarConexoes).mockResolvedValueOnce([conexao]).mockResolvedValueOnce([]);
+    vi.mocked(contaService.revogarConexao).mockResolvedValue(undefined);
+    render(<TokensApiPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Desconectar Claude' }));
+
+    await waitFor(() => expect(contaService.revogarConexao).toHaveBeenCalledWith(7));
+    expect(await screen.findByText('Nenhum aplicativo conectado.')).toBeInTheDocument();
   });
 
   it('mostra o erro quando a lista não carrega', async () => {

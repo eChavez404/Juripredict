@@ -33,4 +33,22 @@ export type TokenApiCriado = TokenApi & { token: string };
 
 export type CriarTokenPayload = { nome: string; senha: string; validade_dias?: number };
 
+/** Aplicativo conectado por OAuth (o conector MCP remoto). */
+export type ConexaoOAuth = {
+  id: number;
+  aplicativo: string;
+  escritorio_id: string;
+  escritorio: string;
+  criado_em: string;
+  ultimo_uso_em: string | null;
+};
+
+/** O que a tela /autorizar mostra antes do consentimento. */
+export type PedidoOAuth = {
+  aplicativo: string;
+  destino: string;
+  escopo: string;
+  escritorios: { id: string; nome: string }[];
+};
+
 export type ConfirmarResetPayload = { uid: string; token: string; nova_senha: string };

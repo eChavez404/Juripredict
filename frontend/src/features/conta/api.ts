@@ -1,8 +1,10 @@
 import api from '../../services/api';
 import type {
   AceitarConvitePayload,
+  ConexaoOAuth,
   ConfirmarResetPayload,
   CriarTokenPayload,
+  PedidoOAuth,
   RegistroPayload,
   SessaoResposta,
   TokenApi,
@@ -31,6 +33,17 @@ export const contaService = {
   ).data,
   revogarToken: async (id: number) => {
     await api.delete(`/auth/tokens/${id}/`);
+  },
+  // Os parâmetros do pedido OAuth vêm da URL e voltam ao servidor sem alteração.
+  pedidoOAuth: async (params: Record<string, string>) => (
+    await api.get<PedidoOAuth>('/oauth/pedido/', { params })
+  ).data,
+  decidirOAuth: async (payload: Record<string, string | boolean>) => (
+    await api.post<{ redirecionar: string }>('/oauth/pedido/', payload)
+  ).data,
+  listarConexoes: async () => (await api.get<ConexaoOAuth[]>('/auth/conexoes/')).data,
+  revogarConexao: async (id: number) => {
+    await api.delete(`/auth/conexoes/${id}/`);
   },
   confirmarEmail: async (token: string) => (
     await api.post<{ detail: string }>('/auth/email/confirmar/', { token })

@@ -2801,3 +2801,35 @@ h6 {
     margin-left: 0;
   }
 }
+
+/* Tela de consentimento do conector MCP (pages/Autorizar.tsx) */
+.consentimento__lista {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.consentimento__lista li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+.consentimento__lista svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--success);
+}
+
+.consentimento__lista .consentimento__nunca svg {
+  color: var(--danger);
+}
+
+.settings-card__subtitulo {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
