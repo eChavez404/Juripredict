@@ -362,6 +362,14 @@ if env_bool("USE_R2_STORAGE"):
     AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = True
+    # O padrão do django-storages sobrescreve nomes repetidos: o peticao.pdf de um
+    # escritório substituiria o de outro, e cada um baixaria o arquivo alheio.
+    # Com False, um nome repetido ganha sufixo, como no disco local.
+    # ponytail: confere e grava em dois passos; dois envios simultâneos do mesmo nome
+    # ainda podem colidir. Nome único no upload_to resolve, se o volume crescer.
+    AWS_S3_FILE_OVERWRITE = False
+    # Pasta dentro do bucket, para dividi-lo com outro projeto sem misturar arquivos.
+    AWS_LOCATION = os.getenv("AWS_LOCATION", "")
     STORAGES = {
         "default": {"BACKEND": "storages.backends.s3.S3Storage"},
         "staticfiles": {
