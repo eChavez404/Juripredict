@@ -162,6 +162,30 @@ cada tentativa bloqueada (`token_api.negado`), com credencial (prefixo), caminho
 nomes dos filtros, nunca os valores. Sem escritório válido no cabeçalho não há onde gravar:
 fica um aviso no log da aplicação. Uma falha ao auditar não derruba a resposta.
 
+## Conector MCP remoto (OAuth 2.1)
+
+Para conectar o Claude ou o agente do JuriPredict sem copiar token, o backend é servidor de
+autorização OAuth 2.1 (`accounts/oauth.py`). O aplicativo descobre tudo por
+`/.well-known/oauth-authorization-server`, registra-se em `/oauth/registrar` (DCR, RFC 7591),
+manda a pessoa à tela `/autorizar` do app e troca o código em `/oauth/token`, com PKCE S256
+obrigatório. `/oauth/revogar` (RFC 7009) desliga a conexão; `/oauth/introspeccao` (RFC 7662)
+é só para o serviço MCP, com o segredo compartilhado.
+
+O access token é um `TokenApi` ligado a uma `ConexaoOAuth`: herda a lista de rotas de
+leitura, a revogação e a auditoria acima, vale `OAUTH_ACESSO_SEGUNDOS` (1 h) e só enxerga o
+escritório escolhido no consentimento. O `X-Escritorio-ID` é ignorado, e `auth/me/` fica de
+fora, porque listaria os outros escritórios. O refresh token vale `OAUTH_RENOVACAO_DIAS` (30)
+e gira a cada uso; reusar um já trocado fora de 30 s, ou reusar um código, revoga a conexão.
+As conexões aparecem em Configurações > Acesso por agentes, onde se desconecta; sair do
+escritório e trocar a senha também cortam o acesso. Na auditoria: `oauth.conexao_criada`,
+`oauth.conexao_revogada`, `oauth.reuso_de_codigo` e `oauth.reuso_de_renovacao`.
+
+| Variável | Uso |
+|---|---|
+| `OAUTH_RECURSOS` | URLs dos servidores MCP que aceitam os tokens (RFC 8707). Vazia, o conector fica desligado |
+| `OAUTH_SEGREDO_INTROSPECCAO` | segredo que o serviço MCP usa para perguntar se um token vale |
+| `OAUTH_EMISSOR` | URL pública do app; padrão `FRONTEND_URL` |
+
 ## Documentos do processo
 
 Cada processo aceita até `DOCUMENTOS_MAX_POR_PROCESSO` anexos (50). O conteúdo é validado
