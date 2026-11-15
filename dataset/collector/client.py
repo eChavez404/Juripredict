@@ -20,7 +20,7 @@ import time
 from typing import Optional
 import requests
 
-from .models import Consulta, ErroFalcao, ErroSessao, Pagina
+from .models import Consulta, ErroFalcao, ErroLimite, ErroPagina, ErroSessao, Pagina
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ URL_FILTROS = f"{BASE}/pesquisa/filtros"
 PAGE_SIZE_MAX = 10          # limite imposto pelo servidor, verificado
 PAUSA_MIN, PAUSA_MAX = 1.5, 3.0
 TENTATIVAS = 4
-STATUS_TRANSITORIOS = {429, 500, 502, 503, 504}
+STATUS_TRANSITORIOS = {500, 502, 503, 504}
 
 MARCAS_SESSAO = ("tentativa inv", "sess")
 
@@ -77,6 +77,10 @@ class ClienteFalcao:
                 time.sleep(espera)
                 continue
 
+            if r.status_code == 429:
+                espera = int(r.headers.get("x-rate-limit-retry-after-seconds") or 0)
+                raise ErroLimite("cota de requisicoes esgotada", espera)
+
             if r.status_code in STATUS_TRANSITORIOS:
                 if tentativa == TENTATIVAS:
                     raise ErroFalcao(f"HTTP {r.status_code} apos {TENTATIVAS} tentativas. " "Pare e verifique se houve bloqueio antes de insistir.")
@@ -85,6 +89,8 @@ class ClienteFalcao:
                 time.sleep(espera)
                 continue
 
+            if r.status_code == 400:
+                raise ErroPagina(f"HTTP 400: {r.text[:300]}")
             if r.status_code != 200:
                 raise ErroFalcao(f"HTTP {r.status_code}: {r.text[:300]}")
 

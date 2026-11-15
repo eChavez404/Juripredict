@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -10,6 +11,8 @@ from auditlog.services import registrar_evento_auditoria
 from .emails import enviar_convite
 from .models import ConviteEscritorio, Escritorio, MembroEscritorio
 from .tokens import gerar_token, hash_token
+
+logger = logging.getLogger(__name__)
 
 
 PAPEIS_GESTORES = {
@@ -160,7 +163,14 @@ def convidar_membro(*, escritorio, membro_ator, email, papel, enviar=enviar_conv
         recurso_id=convite.pk,
         alteracoes={"email": email, "papel": papel},
     )
-    transaction.on_commit(lambda: enviar(convite=convite, token=token))
+    def enviar_depois_do_commit():
+        # Falha de SMTP não pode virar 500: o convite já está gravado e pode ser reenviado.
+        try:
+            enviar(convite=convite, token=token)
+        except Exception:
+            logger.exception("Falha ao enviar o convite %s", convite.pk)
+
+    transaction.on_commit(enviar_depois_do_commit)
     return convite
 
 

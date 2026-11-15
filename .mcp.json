@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "juripredict": {
+      "command": "mcp_server/.venv/Scripts/python.exe",
+      "args": ["mcp_server/server.py"],
+      "env": {
+        "JURIPREDICT_API_URL": "https://juripredict.onrender.com/api/v1",
+        "JURIPREDICT_TOKEN": "${JURIPREDICT_TOKEN}"
+      }
+    }
+  }
+}

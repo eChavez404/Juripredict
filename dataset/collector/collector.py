@@ -11,7 +11,7 @@ from typing import Optional
 
 from .audit import auditar_lote, imprimir_auditoria
 from .client import ClienteFalcao, PAGE_SIZE_MAX
-from .models import Consulta, Documento, ErroFalcao, ErroSessao
+from .models import Consulta, Documento, ErroFalcao, ErroLimite, ErroPagina, ErroSessao, Pagina
 from .normalize import html_para_texto, resumo_normalizacao
 from .storage import Armazenamento
 
@@ -33,9 +33,11 @@ class Resultado:
 def coletar(cliente: ClienteFalcao, armazenamento: Armazenamento,
             consulta: Consulta, paginas: int,
             page_size: int = PAGE_SIZE_MAX, force: bool = False,
-            normalizar: bool = True) -> Resultado:
+            normalizar: bool = True,
+            primeira: Optional[Pagina] = None) -> Resultado:
     """
     Baixa `paginas` paginas, comecando em page=0 (a paginacao e zero-based).
+    `primeira` e a pagina 0 ja obtida por quem chamou, para nao pedi-la de novo.
 
     Para antes se uma pagina vier vazia — e o sinal de fim de resultados.
     """
@@ -52,29 +54,42 @@ def coletar(cliente: ClienteFalcao, armazenamento: Armazenamento,
             continue
 
         try:
-            pagina = cliente.buscar_pagina(consulta, page, page_size)
+            if page == 0 and primeira is not None:
+                pagina = primeira
+            else:
+                pagina = cliente.buscar_pagina(consulta, page, page_size)
+        except ErroLimite:
+            raise
         except ErroSessao as e:
             print(f"\nSessao invalida na pagina {page}: {e.mensagem_usuario}")
             print("Obtenha uma sessao nova no navegador e rode de novo com "
                   "--session-id. As paginas ja baixadas nao serao refeitas.")
             break
+        except ErroPagina:
+            pagina = None
         except ErroFalcao as e:
             print(f"\nFALCAO recusou a pagina {page}: {e.mensagem_usuario}")
             print("Parando. Nao insista automaticamente.")
             break
 
-        if page == 0:
-            res.quantidade_total = pagina.quantidade_total
+        if pagina is None:
+            documentos = metades(cliente, consulta, page, page_size)
+            print(f"Pagina {page}: o servidor falhou ao monta-la; "
+                  f"{len(documentos)} de {page_size} recuperados em metades")
+        else:
+            if page == 0:
+                res.quantidade_total = pagina.quantidade_total
 
-        if pagina.vazia():
-            print(f"Pagina {page}: vazia — fim dos resultados")
-            break
+            if pagina.vazia():
+                print(f"Pagina {page}: vazia — fim dos resultados")
+                break
 
-        armazenamento.gravar_pagina(consulta, pagina, force=force)
-        res.paginas_baixadas += 1
+            armazenamento.gravar_pagina(consulta, pagina, force=force)
+            res.paginas_baixadas += 1
+            documentos = pagina.documentos
 
         novos = 0
-        for doc in pagina.documentos:
+        for doc in documentos:
             res.documentos.append(doc)
             if doc.id_sentenca in vistos:
                 continue
@@ -92,10 +107,26 @@ def coletar(cliente: ClienteFalcao, armazenamento: Armazenamento,
             else:
                 res.documentos_pulados += 1
 
-        print(f"Pagina {page}: {len(pagina.documentos)} documentos "
+        print(f"Pagina {page}: {len(documentos)} documentos "
               f"({novos} novos)")
 
     return res
+
+
+def metades(cliente: ClienteFalcao, consulta: Consulta, page: int,
+            page_size: int) -> list:
+    """Refaz uma pagina que o servidor nao montou em duas de metade do
+    tamanho. 5 e o menor tamanho aceito, entao um documento ruim custa no
+    maximo 5. A pagina fica fora do manifest, e a janela segue incompleta."""
+    if page_size % 2:
+        return []
+    docs = []
+    for sub in (2 * page, 2 * page + 1):
+        try:
+            docs += cliente.buscar_pagina(consulta, sub, page_size // 2).documentos
+        except ErroPagina:
+            log.warning("pagina %s, metade %s: o servidor falhou de novo", page, sub)
+    return docs
 
 
 def relatorio_final(res: Resultado, armazenamento: Armazenamento) -> None:
