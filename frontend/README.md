@@ -2,7 +2,7 @@
 
 Aplicação React + TypeScript construída com Vite. A interface consome a API
 Django e oferece autenticação, CRUD de clientes, processos e agenda, dashboard,
-jurimetria, gestão da equipe, auditoria e configurações da conta.
+jurimetria, agente de IA, gestão da equipe, auditoria e configurações da conta.
 
 ## Execução
 

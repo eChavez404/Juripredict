@@ -16,6 +16,7 @@ const Processos = lazy(() => import('./pages/Processos'));
 const Clientes = lazy(() => import('./pages/Clientes'));
 const Agenda = lazy(() => import('./pages/Agenda'));
 const Jurimetria = lazy(() => import('./pages/Jurimetria'));
+const Agente = lazy(() => import('./pages/Agente'));
 const Configuracoes = lazy(() => import('./pages/Configuracoes'));
 const Equipe = lazy(() => import('./pages/Equipe'));
 const Auditoria = lazy(() => import('./pages/Auditoria'));
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="clientes" element={<Clientes />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="jurimetria" element={<Jurimetria />} />
+          <Route path="agente" element={<Agente />} />
           <Route path="configuracoes" element={<Configuracoes />} />
           <Route path="configuracoes/equipe" element={<Equipe />} />
           <Route path="configuracoes/auditoria" element={<Auditoria />} />
