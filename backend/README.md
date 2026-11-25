@@ -74,6 +74,9 @@ GET          jurimetria/processos/       processos que sustentam uma taxa (vara,
 GET          jurimetria/exportar/        relatório CSV da análise, registrado na auditoria
 GET          pendencias/                 prazos vencidos, próximos 7 dias e andamentos recentes
 GET          prazos/calcular/            vencimento em dias úteis, com a memória do cálculo
+GET          agente/opcoes/              temas, fases e provas do agente de IA
+POST         agente/analises/            começa uma análise (20/hora), registrada na auditoria sem o relato
+GET          agente/analises/{id}/       andamento e resultado, só para quem pediu
 GET|PATCH    escritorios/{id}/           consulta e atualização do escritório
 GET          escritorios/{id}/membros/   lista da equipe
 PATCH        escritorios/{id}/membros/{membro_id}/ alteração de papel/status
@@ -141,9 +144,17 @@ esconder o que a pessoa não pode usar; quem decide é o servidor.
 | `jurimetria.ler` (a rota responde 403) | não | sim | sim |
 | `clientes.documento.ler` (sem ela o CPF/CNPJ vem mascarado e não é alterado) | não | sim | sim |
 | `processos.excluir` e `clientes.excluir` (403) | não | sim | sim |
+| `agente.usar` (403) | não | sim | sim |
 | `membros.gerenciar`, `escritorio.editar`, `auditoria.ler` | não | não | sim |
 
 As regras do estagiário são um padrão conservador: para mudar, edite a tabela.
+
+## Agente de IA
+
+O serviço fica em `agente/` e não tem tela nem login: o navegador fala só com o backend, que
+confere login, papel e limite e chama o agente com `AGENTE_URL` e `AGENTE_SEGREDO`. Sem os dois,
+as rotas respondem 503. O caso não é gravado no banco, e o `id` da análise é assinado com o
+escritório e o usuário, para que ninguém mais consulte o resultado.
 
 ## Tokens de API e auditoria de agentes
 

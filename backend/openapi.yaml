@@ -5,8 +5,126 @@ info:
   description: |-
     API REST do JuriPredict: gestão de clientes, processos e agenda, com jurimetria da carteira, isolamento por escritório e controle de acesso por papel.
 
-    Erros são devolvidos em JSON: 400 (dados inválidos), 401 (credencial ausente, inválida ou expirada), 403 (papel sem a capacidade exigida), 404 (recurso inexistente ou de outro escritório), 409 (exclusão de cliente com processos), 429 (limite de requisições) e 503 (DataJud sem chave configurada).
+    Erros são devolvidos em JSON: 400 (dados inválidos), 401 (credencial ausente, inválida ou expirada), 403 (papel sem a capacidade exigida), 404 (recurso inexistente ou de outro escritório), 409 (exclusão de cliente com processos), 429 (limite de requisições) e 503 (DataJud ou agente de IA sem configuração).
 paths:
+  /api/v1/agente/analises/:
+    post:
+      operationId: agente_analises_create
+      description: Começa uma análise. O caso não é gravado aqui; a auditoria guarda
+        só tema e fase.
+      tags:
+      - agente
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgenteCasoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AgenteCasoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AgenteCasoRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgenteAnaliseResposta'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/agente/analises/{analise_id}/:
+    get:
+      operationId: agente_analises_retrieve
+      parameters:
+      - in: path
+        name: analise_id
+        schema:
+          type: string
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - agente
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgenteAnaliseResposta'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+  /api/v1/agente/opcoes/:
+    get:
+      operationId: agente_opcoes_retrieve
+      tags:
+      - agente
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgenteOpcoesResposta'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detalhe'
+          description: ''
+      parameters:
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
   /api/v1/auditoria/:
     get:
       operationId: auditoria_list
@@ -1999,6 +2117,97 @@ components:
       required:
       - senha
       - token
+    AgenteAnaliseResposta:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Vale só para quem pediu, no mesmo escritório.
+        status:
+          type: string
+          description: running, done ou error.
+        step:
+          type: string
+          nullable: true
+          description: Etapa em andamento.
+        result:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: Contrato em agente/app/agents/analista/schema.py.
+        error:
+          type: string
+          nullable: true
+      required:
+      - error
+      - id
+      - result
+      - status
+      - step
+    AgenteCasoRequest:
+      type: object
+      description: 'Só forma e tamanho: as opções válidas são do agente, que recusa
+        o que não conhece.'
+      properties:
+        tema:
+          type: string
+          minLength: 1
+          maxLength: 40
+        fase:
+          type: string
+          minLength: 1
+          maxLength: 40
+        relato:
+          type: string
+          minLength: 40
+          description: Sem nomes das partes. CPF e CNPJ são mascarados.
+          maxLength: 12000
+        provas:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+          maxItems: 20
+        orgao_julgador:
+          type: string
+          maxLength: 200
+        duvida:
+          type: string
+          maxLength: 500
+      required:
+      - fase
+      - relato
+      - tema
+    AgenteOpcao:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
+    AgenteOpcoesResposta:
+      type: object
+      properties:
+        temas:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgenteOpcao'
+        fases:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgenteOpcao'
+        provas:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgenteOpcao'
+      required:
+      - fases
+      - provas
+      - temas
     AlterarSenhaRequest:
       type: object
       properties:

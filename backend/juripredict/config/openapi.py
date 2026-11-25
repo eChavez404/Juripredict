@@ -149,6 +149,27 @@ class PrazoCalculoRespostaSerializer(serializers.Serializer):
     ressalvas = serializers.ListField(child=serializers.CharField())
 
 
+class AgenteOpcaoSerializer(serializers.Serializer):
+    value = serializers.CharField()
+    label = serializers.CharField()
+
+
+class AgenteOpcoesRespostaSerializer(serializers.Serializer):
+    temas = AgenteOpcaoSerializer(many=True)
+    fases = AgenteOpcaoSerializer(many=True)
+    provas = AgenteOpcaoSerializer(many=True)
+
+
+class AgenteAnaliseRespostaSerializer(serializers.Serializer):
+    id = serializers.CharField(help_text="Vale só para quem pediu, no mesmo escritório.")
+    status = serializers.CharField(help_text="running, done ou error.")
+    step = serializers.CharField(allow_null=True, help_text="Etapa em andamento.")
+    result = serializers.DictField(
+        allow_null=True, help_text="Contrato em agente/app/agents/analista/schema.py."
+    )
+    error = serializers.CharField(allow_null=True)
+
+
 class PendenciasRespostaSerializer(serializers.Serializer):
     urgentes = serializers.IntegerField(help_text="Prazos vencidos e compromissos até amanhã.")
     total_vencidos = serializers.IntegerField()

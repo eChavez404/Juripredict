@@ -5,6 +5,9 @@ from auditlog.views import EventoAuditoriaViewSet
 from organizations.views import EscritorioViewSet
 
 from .views import (
+    AgenteAnaliseAPIView,
+    AgenteAnalisesAPIView,
+    AgenteOpcoesAPIView,
     AlterarSenhaAPIView,
     ClienteViewSet,
     CustomTokenObtainPairView,
@@ -40,6 +43,9 @@ urlpatterns = [
     path("jurimetria/exportar/", JurimetriaExportarAPIView.as_view(), name="jurimetria-exportar"),
     path("pendencias/", PendenciasAPIView.as_view(), name="pendencias"),
     path("prazos/calcular/", PrazoCalculoAPIView.as_view(), name="prazo-calcular"),
+    path("agente/opcoes/", AgenteOpcoesAPIView.as_view(), name="agente-opcoes"),
+    path("agente/analises/", AgenteAnalisesAPIView.as_view(), name="agente-analises"),
+    path("agente/analises/<str:analise_id>/", AgenteAnaliseAPIView.as_view(), name="agente-analise"),
     path("", include("organizations.urls")),
     path("", include(router.urls)),
 ]

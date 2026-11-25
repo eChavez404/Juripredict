@@ -263,6 +263,10 @@ OAUTH_SEGREDO_INTROSPECCAO = os.getenv("OAUTH_SEGREDO_INTROSPECCAO", "")
 OAUTH_ACESSO_SEGUNDOS = int(os.getenv("OAUTH_ACESSO_SEGUNDOS", "3600"))
 OAUTH_RENOVACAO_DIAS = int(os.getenv("OAUTH_RENOVACAO_DIAS", "30"))
 OAUTH_CODIGO_SEGUNDOS = 600
+# Agente de IA (pasta agente/ na raiz): serviço interno, que só aceita quem tem o segredo.
+# Sem a URL e o segredo, a análise fica desligada (503).
+AGENTE_URL = os.getenv("AGENTE_URL", "").strip().rstrip("/")
+AGENTE_SEGREDO = os.getenv("AGENTE_SEGREDO", "").strip()
 VERIFICACAO_EMAIL_HORAS = int(os.getenv("VERIFICACAO_EMAIL_HORAS", "72"))
 # Versão vigente dos Termos de Uso e da Política de Privacidade. Mudou o texto,
 # muda a versão: o cadastro grava qual versão cada usuário aceitou.
@@ -309,6 +313,8 @@ REST_FRAMEWORK = {
         "recuperacao_senha": "10/hour",
         "conta_sensivel": "10/hour",
         "andamentos": "30/hour",
+        # cada análise é uma chamada paga ao modelo
+        "agente": "20/hour",
         "oauth_registro": "20/hour",
         "oauth_token": "300/hour",
         "oauth_consentimento": "30/hour",
@@ -325,7 +331,7 @@ SPECTACULAR_SETTINGS = {
         "Erros são devolvidos em JSON: 400 (dados inválidos), 401 (credencial ausente, inválida "
         "ou expirada), 403 (papel sem a capacidade exigida), 404 (recurso inexistente ou de outro "
         "escritório), 409 (exclusão de cliente com processos), 429 (limite de requisições) e "
-        "503 (DataJud sem chave configurada)."
+        "503 (DataJud ou agente de IA sem configuração)."
     ),
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
