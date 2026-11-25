@@ -1,0 +1,40 @@
+{
+  "abstencao": {
+    "teste_n": 1273,
+    "limiares": [
+      {
+        "limiar": 0,
+        "certos": 1174,
+        "errados": 99,
+        "leitura": 0,
+        "por_mil": [
+          922,
+          78,
+          0
+        ]
+      },
+      {
+        "limiar": 0.8,
+        "certos": 1115,
+        "errados": 59,
+        "leitura": 99,
+        "por_mil": [
+          876,
+          46,
+          78
+        ]
+      },
+      {
+        "limiar": 0.9,
+        "certos": 1064,
+        "errados": 35,
+        "leitura": 174,
+        "por_mil": [
+          836,
+          27,
+          137
+        ]
+      }
+    ]
+  }
+}
