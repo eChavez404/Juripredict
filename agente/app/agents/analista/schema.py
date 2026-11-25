@@ -9,11 +9,10 @@ calculada em código.
 from enum import StrEnum
 from typing import Annotated, Literal
 
-import yaml
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 from app.core.privacy import mask_documents
-from app.prompts import PROMPTS_DIR
+from app.prompts import PROMPTS_DIR, parse_catalog
 
 CATALOG_DIR = PROMPTS_DIR / "analista" / "criterios"
 
@@ -105,8 +104,8 @@ class CriteriaCatalog(BaseModel):
 
 def _load_catalogs() -> dict[Theme, CriteriaCatalog]:
     catalogs: dict[Theme, CriteriaCatalog] = {}
-    for path in sorted(CATALOG_DIR.glob("*.yaml")):
-        catalog = CriteriaCatalog.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+    for path in sorted(CATALOG_DIR.glob("*.md")):
+        catalog = CriteriaCatalog.model_validate(parse_catalog(path.read_text(encoding="utf-8")))
         if catalog.tema in catalogs:
             raise ValueError(f"tema duplicado no catálogo: {catalog.tema}")
         catalogs[catalog.tema] = catalog
@@ -222,6 +221,9 @@ class Option(BaseModel):
 
 
 class OptionsResponse(BaseModel):
+    # Só se há chave: não diz se ela funciona.
+    ia_configurada: bool
+    base_configurada: bool
     temas: list[Option]
     fases: list[Option]
     provas: list[Option]

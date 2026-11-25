@@ -10,6 +10,7 @@ os.environ.update(
         "LLM_MODEL": "google_genai:modelo-de-teste",
         "AGENTE_SEGREDO": "segredo-de-teste",
         "GOOGLE_API_KEY": "chave-de-teste",
+        "LLM_FALLBACK_MODEL": "google_genai:reserva-de-teste",
         "PINECONE_API_KEY": "",
         "PINECONE_INDEX": "",
         "PINECONE_NAMESPACE": "",

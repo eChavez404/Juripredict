@@ -1,0 +1,1 @@
+A resposta anterior violou o contrato ou os limites. Analise novamente, avaliando cada critério do tema exatamente uma vez, propondo melhorias só para critérios parciais ou ausentes e citando somente ids de CASOS_PROXIMOS.

@@ -1,12 +1,13 @@
 """Nós do analista: preparar o contexto, buscar casos, analisar e medir."""
 
 import json
+import logging
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from app.core import vector_store
+from app.core import guardrails, vector_store
 from app.core.input_errors import NoCriteriaAvailable
-from app.core.llm import invoke_with_timeout_translation, model
+from app.core.llm import invoke_with_retry, model, provider_schema
 from app.core.privacy import mask_documents
 from app.core.structured_output import (
     STRUCTURED_OUTPUT_RETRY_ERRORS,
@@ -17,7 +18,12 @@ from app.prompts import load_prompt
 from .schema import CATALOGOS, AnalysisDraft, CaseMeasurement, Status
 from .state import AnalistaState
 
-SYSTEM_PROMPT = load_prompt("analista/system.md")
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = load_prompt("analista/system.md") + "\n" + load_prompt("analista/guardrails.md")
+CORRECTION_PROMPT = load_prompt("analista/correcao.md")
+
+PROVIDER_SCHEMA = provider_schema(AnalysisDraft)
 
 MAX_CASOS = 5
 # TODO(revisão): crédito de cada situação no índice.
@@ -27,6 +33,7 @@ CREDITO = {Status.ATENDIDO: 1.0, Status.PARCIAL: 0.5, Status.AUSENTE: 0.0}
 def prepare_context(state: AnalistaState) -> AnalistaState:
     """Escolhe o catálogo do tema e registra as suposições. Nunca pergunta ao usuário."""
     request = state["request"]
+    guardrails.check_input(request.relato, request.duvida, request.orgao_julgador)
     catalog = CATALOGOS.get(request.tema)
     if catalog is None:
         raise NoCriteriaAvailable()
@@ -45,7 +52,7 @@ def prepare_context(state: AnalistaState) -> AnalistaState:
 
 
 def retrieve_cases(state: AnalistaState) -> AnalistaState:
-    """Busca os casos mais próximos. Sem base configurada, segue e avisa."""
+    """Busca os casos mais próximos. Sem base, ou com falha nela, segue e avisa."""
     request = state["request"]
     cases = []
     assumptions = list(state["assumptions"])
@@ -54,7 +61,18 @@ def retrieve_cases(state: AnalistaState) -> AnalistaState:
     else:
         parts = [request.tema.label, request.orgao_julgador, request.relato]
         query = "\n".join(filter(None, parts))
-        cases = vector_store.search_cases(query, tema=request.tema.value, limit=MAX_CASOS)
+        try:
+            found = vector_store.search_cases(query, tema=request.tema.value, limit=MAX_CASOS)
+        except vector_store.VectorStoreError as exc:
+            # Só a classe da causa: a mensagem do provedor pode conter a consulta.
+            logger.warning("vector_store_failed cause=%s", type(exc.__cause__).__name__)
+            assumptions.append(
+                "A busca na base de casos falhou: a análise usou só os critérios do tema."
+            )
+            return {**state, "cases": [], "assumptions": assumptions}
+        cases = [case for case in found if not guardrails.has_injection(case.texto)]
+        if len(cases) < len(found):
+            assumptions.append("Um caso da base foi descartado por conter um comando para a IA.")
         if not cases:
             assumptions.append("A base de casos não devolveu nenhum caso para esse tema.")
     return {**state, "cases": cases, "assumptions": assumptions}
@@ -79,6 +97,17 @@ def _validate_against_context(state: AnalistaState, analysis: AnalysisDraft) -> 
     cited = {*compared, *(case_id for item in analysis.melhorias for case_id in item.caso_ids)}
     if not cited <= {case.id_sentenca for case in state["cases"]}:
         raise ValueError("A análise citou caso fora dos trazidos da base.")
+
+
+def _allowed_sources(state: AnalistaState) -> list[str]:
+    """Tudo o que a IA pode usar como fonte de súmula, lei ou número de processo."""
+    request = state["request"]
+    sources = [request.relato, request.duvida or ""]
+    for criterion in state["catalog"].criterios:
+        sources += [criterion.nome, criterion.descricao, *criterion.fundamentos]
+    for case in state["cases"]:
+        sources += [case.texto, case.numero_cnj or ""]
+    return sources
 
 
 def _compact(value) -> str:
@@ -119,31 +148,39 @@ def analyze_case(state: AnalistaState) -> AnalistaState:
         "Analise o caso completo."
     )
     messages = [SystemMessage(content=SYSTEM_PROMPT), HumanMessage(content=prompt)]
-    # json_schema = structured output nativo do Gemini.
-    structured_model = model().with_structured_output(AnalysisDraft, method="json_schema")
+
+    def build(name: str):
+        # json_schema = structured output nativo do Gemini.
+        return model(name).with_structured_output(PROVIDER_SCHEMA, method="json_schema")
+
+    correction = ""
     for attempt in range(2):
         attempt_messages = messages
         if attempt:
             attempt_messages = [
                 *messages,
-                HumanMessage(
-                    content=(
-                        "A resposta anterior violou o contrato. Analise novamente, avaliando cada "
-                        "critério do tema exatamente uma vez, propondo melhorias só para critérios "
-                        "parciais ou ausentes e citando somente ids de CASOS_PROXIMOS."
-                    )
-                ),
+                HumanMessage(content=CORRECTION_PROMPT + correction),
             ]
         try:
-            result = invoke_with_timeout_translation(structured_model, attempt_messages)
+            result, used_fallback = invoke_with_retry(build, attempt_messages)
             analysis = (
                 result
                 if isinstance(result, AnalysisDraft)
                 else AnalysisDraft.model_validate(result)
             )
             _validate_against_context(state, analysis)
-            return {**state, "analysis": analysis}
+            guardrails.check_output(analysis.model_dump(mode="json"), _allowed_sources(state))
+            assumptions = list(state["assumptions"])
+            if used_fallback:
+                assumptions.append(
+                    "Modelo principal indisponível: análise feita pelo modelo reserva."
+                )
+            return {**state, "analysis": analysis, "assumptions": assumptions}
         except STRUCTURED_OUTPUT_RETRY_ERRORS as error:
+            if isinstance(error, guardrails.GuardrailViolation):
+                correction = error.correction()
+                if attempt:
+                    raise guardrails.GuardrailBlocked(error.rules) from error
             if attempt:
                 raise StructuredOutputError(
                     "A IA não conseguiu devolver uma análise válida. Tente novamente."

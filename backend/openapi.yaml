@@ -2192,6 +2192,12 @@ components:
     AgenteOpcoesResposta:
       type: object
       properties:
+        ia_configurada:
+          type: boolean
+          description: Há chave; não diz se ela funciona.
+        base_configurada:
+          type: boolean
+          description: Há chave e índice do Pinecone.
         temas:
           type: array
           items:
@@ -2205,7 +2211,9 @@ components:
           items:
             $ref: '#/components/schemas/AgenteOpcao'
       required:
+      - base_configurada
       - fases
+      - ia_configurada
       - provas
       - temas
     AlterarSenhaRequest:

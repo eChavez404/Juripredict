@@ -21,11 +21,26 @@ O advogado informa tema, fase do processo, relato, provas e, se quiser, o órgã
 3. **Analisar:** o modelo avalia cada critério, propõe melhorias e compara os casos. Uma resposta fora do contrato, ou que cite um caso que não veio da base, é rejeitada, com uma nova tentativa.
 4. **Medir:** regras em código, sem IA, calculam o índice atual, o índice com as melhorias e o ganho possível.
 
+### Proteção em duas camadas
+
+| Camada | Onde | O que confere |
+| ------ | ---- | ------------- |
+| 1. Contrato | `schema.py` e `_validate_against_context` | **formato**: campos, tamanhos, opções, ids de critérios e de casos, na entrada e na saída |
+| 2. Guard rails | `app/core/guardrails.py` | **conteúdo**: na entrada, comando dirigido à IA; na saída, fonte legal ou processo inventado, previsão de êxito, link, dado pessoal e vazamento do prompt |
+
+As duas são código. O `guardrails.md` orienta o modelo, mas não conta como camada: ele pode descumprir. Uma resposta recusada é refeita uma vez, com o motivo; se falhar de novo, a análise não é exibida. Um caso da base com comando para a IA é descartado, com aviso.
+
+Os guard rails não verificam se a análise jurídica está certa, nem pegam nome de pessoa ou fonte real usada fora de contexto: a revisão do advogado continua necessária.
+
+### Quando o provedor falha
+
+Erro passageiro do Google (5xx, 429 ou conexão) é repetido com espera crescente e, por fim, vai para o modelo reserva (`LLM_FALLBACK_MODEL`), com aviso no resultado. Falha na base de casos não derruba a análise: ela segue pelos critérios e avisa. Toda mensagem de erro traz um código que leva à linha do log.
+
 ### O que o índice mede
 
 O índice vai de 0 a 100 e soma os pesos dos critérios: atendido vale 1, parcial vale 0,5 e ausente vale 0. O índice potencial considera atendidos os critérios em aberto que têm melhoria proposta e ainda podem ser corrigidos na fase atual do processo. **Não é probabilidade de êxito.**
 
-Os critérios ficam em `app/prompts/analista/criterios/`. São um rascunho: pesos, prazos de correção e vigência dos fundamentos, marcados com `TODO(revisão)`, ainda precisam ser confirmados por um advogado.
+Todos os prompts são Markdown, em `app/prompts/analista/`: `system.md` (papel e tarefa), `guardrails.md` (limites), `correcao.md` (nova tentativa) e `criterios/` (um arquivo por tema). Os critérios são lidos campo a campo: um erro de digitação impede o agente de subir. São um rascunho: pesos, prazos de correção e vigência dos fundamentos, marcados com `TODO(revisão)`, ainda precisam ser confirmados por um advogado.
 
 ## Tecnologias
 
@@ -54,6 +69,7 @@ Para usar pelo app, suba também o backend e o frontend, com `AGENTE_URL=http://
 | -------- | --- |
 | `AGENTE_SEGREDO` | Segredo compartilhado com o backend; sem ele, a API recusa tudo |
 | `LLM_MODEL` | Modelo, no formato `provedor:modelo` (obrigatória) |
+| `LLM_FALLBACK_MODEL` | Modelo reserva; vazio desliga |
 | `GOOGLE_API_KEY` | Chave do Google, usada no modelo e nos embeddings |
 | `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` | Modelo e dimensão dos vetores; a dimensão precisa ser a do índice |
 | `PINECONE_API_KEY`, `PINECONE_INDEX`, `PINECONE_NAMESPACE` | Base de casos; sem chave e índice, a busca é pulada com aviso |
@@ -74,12 +90,12 @@ Os jobs ficam na memória de um único processo: somem ao reiniciar o serviço e
 
 ## Contrato da base (provisório)
 
-Cada vetor no Pinecone precisa trazer os metadados de `RetrievedCase`, em `app/core/vector_store.py`: `id_sentenca` e `texto` (obrigatórios), `numero_cnj`, `tipo_documento`, `orgao_julgador`, `data_julgamento` e `resultado`, além de `temas`, uma lista com `insalubridade` e/ou `periculosidade`. Registro fora do contrato interrompe a busca com erro.
+Cada vetor no Pinecone precisa trazer os metadados de `RetrievedCase`, em `app/core/vector_store.py`: `id_sentenca` e `texto` (obrigatórios), `numero_cnj`, `tipo_documento`, `orgao_julgador`, `data_julgamento` e `resultado`, além de `temas`, uma lista com `insalubridade` e/ou `periculosidade`. Registro fora do contrato faz a busca falhar, e a análise segue sem casos, com aviso.
 
 ## Dados pessoais
 
 - O agente recebe só o caso: nem usuário, nem escritório, nem token.
-- CPF e CNPJ são mascarados na entrada da API e nos trechos da base, antes de chegar ao Google e ao Langfuse. **Nomes não são mascarados:** o formulário pede que não sejam informados.
+- CPF, CNPJ, PIS, e-mail e telefone são mascarados na entrada da API e nos trechos da base, antes de chegar ao Google e ao Langfuse. **Nomes não são mascarados:** o formulário pede que não sejam informados.
 - Os trechos da base precisam ser indexados sem os nomes das partes. O texto da decisão não é devolvido pela API.
 - Os logs não registram relato, prompt nem resposta.
 
@@ -106,6 +122,6 @@ app/
   agents/analista/    grafo, nós e contratos do agente
   api/v1/             endpoints da API
   core/               configuração, modelo, base vetorial, privacidade e erros
-  prompts/analista/   prompt do sistema e critérios por tema
+  prompts/analista/   prompts e critérios por tema, em Markdown
 tests/                testes automatizados
 ```

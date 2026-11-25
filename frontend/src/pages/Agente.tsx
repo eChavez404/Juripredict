@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import axios from 'axios';
 import { ArrowUpRight, Gauge, Scale, TrendingUp } from 'lucide-react';
+import ProgressoAnalise from '../components/agente/ProgressoAnalise';
 import ProtectedContent from '../components/auth/ProtectedContent';
 import Feedback from '../components/ui/Feedback';
 import MetricCard from '../components/ui/MetricCard';
@@ -19,14 +20,6 @@ const LIMITE_MS = 6 * 60 * 1000;
 const ESPERA_AGENTE_MS = 2 * 60 * 1000;
 const NOVA_TENTATIVA_MS = 5000;
 const LIGANDO = 'Ligando o agente. Pode levar até dois minutos...';
-
-const ETAPAS: Record<string, string> = {
-  ligando: LIGANDO,
-  prepare_context: 'Separando os critérios do tema...',
-  retrieve_cases: 'Procurando decisões parecidas na base...',
-  analyze_case: 'Analisando o caso. Pode levar mais de um minuto...',
-  measure_case: 'Calculando os índices...',
-};
 
 const SITUACOES: Record<AgenteSituacao, { rotulo: string; cor: string }> = {
   atendido: { rotulo: 'Atendido', cor: 'green' },
@@ -232,6 +225,12 @@ const AgenteConteudo = () => {
   };
 
   const analisando = etapa !== '';
+  const progresso = useRef<HTMLDivElement>(null);
+
+  // O formulário é comprido: sem isto, o andamento ficaria fora da tela.
+  useEffect(() => {
+    if (analisando) progresso.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  }, [analisando]);
 
   return (
     <div className="page">
@@ -245,10 +244,14 @@ const AgenteConteudo = () => {
       {erro && <Feedback type="error">{erro}</Feedback>}
       {ligando && <Feedback type="info">{LIGANDO}</Feedback>}
 
+      {opcoes && !opcoes.ia_configurada && (
+        <Feedback type="error">A chave da IA (GOOGLE_API_KEY) não chegou ao agente. Confira o ambiente do servidor.</Feedback>
+      )}
+
       {opcoes && (
         <form className="panel panel--padded entity-form" onSubmit={(event) => void analisar(event)}>
           <Feedback type="info">
-            O texto do caso é enviado a serviços de IA de terceiros. Não informe nomes das partes. CPF e CNPJ são mascarados antes do envio.
+            O texto do caso é enviado a serviços de IA de terceiros. Não informe nomes das partes. CPF, CNPJ, PIS, e-mail e telefone são mascarados antes do envio.
           </Feedback>
           <div className="form-grid">
             <label className="form-field">
@@ -296,14 +299,18 @@ const AgenteConteudo = () => {
             </label>
           </div>
           <div className="form-actions">
-            <button className="button button--primary" type="submit" disabled={analisando}>
+            <button className="button button--primary" type="submit" disabled={analisando || !opcoes.ia_configurada}>
               <Scale size={16} aria-hidden="true" /> {analisando ? 'Analisando...' : 'Analisar caso'}
             </button>
           </div>
         </form>
       )}
 
-      {analisando && <Feedback type="info">{ETAPAS[etapa] ?? 'Analisando...'}</Feedback>}
+      {analisando && (
+        <div ref={progresso}>
+          <ProgressoAnalise etapa={etapa} comBase={opcoes?.base_configurada ?? false} />
+        </div>
+      )}
       {resultado && <Resultado resultado={resultado} />}
     </div>
   );

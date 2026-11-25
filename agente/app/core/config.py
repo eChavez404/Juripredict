@@ -6,6 +6,21 @@ from dotenv import load_dotenv
 # Caminho explícito: sem ele, a busca sobe até o .env da raiz, com as chaves do Django (AST06).
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
+# Painéis de hospedagem guardam as aspas e espaços colados junto com a chave, e aí o provedor a
+# recusa. Corrige no próprio ambiente porque o SDK do Langfuse também lê dele.
+for _name in (
+    "GOOGLE_API_KEY",
+    "LLM_MODEL",
+    "LLM_FALLBACK_MODEL",
+    "EMBEDDING_MODEL",
+    "AGENTE_SEGREDO",
+):
+    if _name in os.environ:
+        os.environ[_name] = os.environ[_name].strip().strip("\"'").strip()
+for _name in list(os.environ):
+    if _name.startswith(("PINECONE_", "LANGFUSE_")):
+        os.environ[_name] = os.environ[_name].strip().strip("\"'").strip()
+
 # Configurações do aplicativo
 APP_NAME = "Agente JuriPredict"
 DESCRIPTION = "Mede um caso trabalhista, aponta o que melhorar e traz os casos mais próximos."
@@ -17,6 +32,8 @@ AGENTE_SEGREDO = (os.getenv("AGENTE_SEGREDO") or "").strip()
 # Modelo no formato provedor:modelo (init_chat_model). O GOOGLE_API_KEY também é lido
 # pelo próprio SDK a partir do .env.
 LLM_MODEL = (os.getenv("LLM_MODEL") or "").strip()
+# Usado só quando o principal segue indisponível depois das repetições. Vazio desliga.
+LLM_FALLBACK_MODEL = os.getenv("LLM_FALLBACK_MODEL", "google_genai:gemini-3.5-flash-lite").strip()
 GOOGLE_API_KEY = (os.getenv("GOOGLE_API_KEY") or "").strip()
 
 # Sem as duas chaves, nada é enviado ao Langfuse.
