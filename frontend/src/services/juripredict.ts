@@ -1,6 +1,7 @@
 import api from './api';
 import type {
   AgenteAnalise,
+  DecisoesTribunal,
   AgenteCaso,
   AgenteOpcoes,
   AndamentosResposta,
@@ -11,6 +12,7 @@ import type {
   EventoAgenda,
   JurimetriaData,
   JurimetriaProcessos,
+  JurimetriaTribunal,
   Pendencias,
   PrazoCalculado,
   PrazoTipo,
@@ -92,11 +94,19 @@ export const dashboardService = {
 export type FiltrosJurimetria = { area?: string; ano?: string; vara?: string; resultado?: string };
 
 // Campos vazios ficam fora da URL: `?area=` seria um filtro por área em branco.
-const semVazios = (filtros: FiltrosJurimetria) => Object.fromEntries(
+const semVazios = (filtros: Record<string, string | undefined>) => Object.fromEntries(
   Object.entries(filtros).filter(([, valor]) => valor),
 );
 
+export type FiltrosTribunal = { tema: string; vara?: string; ano?: string; resultado?: string };
+
 export const jurimetriaService = {
+  tribunal: async (filtros: FiltrosTribunal) => (
+    await api.get<JurimetriaTribunal>('/jurimetria/tribunal/', { params: semVazios(filtros) })
+  ).data,
+  decisoesTribunal: async (filtros: FiltrosTribunal) => (
+    await api.get<DecisoesTribunal>('/jurimetria/tribunal/decisoes/', { params: semVazios(filtros) })
+  ).data,
   get: async (filtros: FiltrosJurimetria = {}) => (
     await api.get<JurimetriaData>('/jurimetria/', { params: semVazios(filtros) })
   ).data,

@@ -2992,3 +2992,133 @@ h6 {
     animation: none;
   }
 }
+
+/* Jurimetria do tribunal */
+.jurimetria-visoes {
+  align-self: flex-start;
+}
+
+.tribunal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.tribunal-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  color: #7a5a1d;
+  background: #fff8ea;
+  border: 1px solid #f0dcae;
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.tribunal-aviso svg {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+}
+
+.tribunal-resumo {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+
+.tribunal-taxa {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+}
+
+.tribunal-taxa__valor {
+  font-size: 2.6rem;
+  line-height: 1.1;
+}
+
+.tribunal-taxa__ic,
+.tribunal-taxa p {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.tribunal-motivo {
+  padding-top: 0.35rem;
+  color: var(--warning);
+}
+
+.tribunal-taxa__ver {
+  justify-self: start;
+  margin-top: 0.5rem;
+}
+
+.tribunal-fora {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  font-size: 0.74rem;
+}
+
+.tribunal-fora li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tribunal-fora li:last-child {
+  border-bottom: 0;
+}
+
+.tribunal-populacao,
+.tribunal-rodape {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.tribunal-populacao {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.tribunal-rodape {
+  display: grid;
+  gap: 0.2rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.tribunal-resultados {
+  margin-bottom: 0.75rem;
+}
+
+.tribunal-trecho {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.2rem 0;
+  padding: 0.8rem 1rem;
+  background: var(--surface-soft);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.tribunal-trecho small {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .tribunal-resumo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
