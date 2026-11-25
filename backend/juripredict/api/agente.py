@@ -15,6 +15,9 @@ from rest_framework.exceptions import APIException, NotFound
 
 # Abaixo dos 15 s do frontend. O agente responde na hora: a análise corre depois, por consulta.
 TIMEOUT_SEGUNDOS = 10
+# As opções são a chamada que acorda o agente hibernado. Curta, para não prender um worker
+# do gunicorn durante a espera: quem insiste é a página.
+TIMEOUT_OPCOES_SEGUNDOS = 3
 SAL = "agente.analise"
 # Os resultados ficam na memória do agente; um dia depois não há o que consultar.
 VALIDADE_SEGUNDOS = 24 * 3600
@@ -36,7 +39,7 @@ class CasoRecusado(APIException):
     default_detail = "O agente não aceitou o caso. Confira os campos do formulário."
 
 
-def _chamar(caminho, corpo=None):
+def _chamar(caminho, corpo=None, timeout=TIMEOUT_SEGUNDOS):
     if not settings.AGENTE_URL or not settings.AGENTE_SEGREDO:
         raise AgenteNaoConfigurado
     requisicao = request.Request(
@@ -48,14 +51,17 @@ def _chamar(caminho, corpo=None):
         },
     )
     try:
-        with request.urlopen(requisicao, timeout=TIMEOUT_SEGUNDOS) as resposta:
+        with request.urlopen(requisicao, timeout=timeout) as resposta:
             return json.loads(resposta.read().decode())
     except error.HTTPError as exc:
         # Sem repassar o corpo: o 422 do agente devolve o que foi enviado, com o relato.
         if exc.code == 422:
             raise CasoRecusado from None
-        if exc.code == 404:
+        if exc.code == 404 and caminho.startswith("analyses/"):
             raise NotFound(NAO_ENCONTRADA) from None
+        # Segredo diferente nos dois lados, ou endereço sem serviço: esperar não resolve.
+        if exc.code in (401, 404):
+            raise AgenteNaoConfigurado from None
         raise AgenteIndisponivel from None
     except (OSError, HTTPException, ValueError):
         raise AgenteIndisponivel from None
@@ -66,7 +72,7 @@ def _analise(job):
 
 
 def opcoes():
-    return _chamar("options")
+    return _chamar("options", timeout=TIMEOUT_OPCOES_SEGUNDOS)
 
 
 def iniciar(caso):

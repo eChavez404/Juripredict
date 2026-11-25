@@ -1,12 +1,21 @@
-"""Serviço do agente do JuriPredict: API interna, sem tela, chamada pelo backend Django."""
+"""Serviço do agente do JuriPredict: sem tela nem documentação pública, só para o backend."""
 
 import uvicorn
 from fastapi import FastAPI
 
 from app.api.v1.router import router as api_router
+from app.core.auth import RequireBackend
 from app.core.config import APP_NAME, DESCRIPTION, HOST, PORT, VERSION
 
-app = FastAPI(title=APP_NAME, description=DESCRIPTION, version=VERSION)
+app = FastAPI(
+    title=APP_NAME,
+    description=DESCRIPTION,
+    version=VERSION,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+app.add_middleware(RequireBackend)
 app.include_router(api_router)
 
 
