@@ -29,6 +29,8 @@ from config.openapi import (
     DetalheSerializer,
     JurimetriaProcessosRespostaSerializer,
     JurimetriaRespostaSerializer,
+    JurimetriaTribunalDecisoesRespostaSerializer,
+    JurimetriaTribunalRespostaSerializer,
     PendenciasRespostaSerializer,
     PrazoCalculoRespostaSerializer,
     SessaoSerializer,
@@ -41,6 +43,7 @@ from . import agente
 from .andamentos import sincronizar_processo
 from .documentos import anexar_documento, remover_documento
 from .datajud import DatajudErro
+from . import jurimetria_tribunal
 from .jurimetria import (
     RESULTADOS_CONCLUIDOS,
     analisar,
@@ -52,7 +55,7 @@ from .jurimetria import (
     opcoes_de_filtro,
     resposta_publica,
 )
-from .models import Andamento, Cliente, DocumentoProcesso, EventoAgenda, Processo
+from .models import Andamento, Cliente, DecisaoTribunal, DocumentoProcesso, EventoAgenda, Processo
 from .prazos import calcular_prazo
 from .serializers import (
     AgenteCasoSerializer,
@@ -532,6 +535,39 @@ class JurimetriaExportarAPIView(EscritorioContextMixin, APIView):
         )
         resposta["Content-Disposition"] = 'attachment; filename="jurimetria-carteira.csv"'
         return resposta
+
+
+FILTROS_TRIBUNAL = [
+    OpenApiParameter("tema", str, enum=[valor for valor, _ in DecisaoTribunal.TEMAS]),
+    OpenApiParameter("vara", str, description="Vara exatamente como consta nas sentenças."),
+    OpenApiParameter("ano", int, description="Ano da sentença."),
+]
+
+
+class JurimetriaTribunalAPIView(APIView):
+    """Taxa de deferimento do pedido nas sentenças públicas do TRT-16, com o que a sustenta."""
+
+    permission_classes = [IsAuthenticated, TemContextoEscritorio, exige_capability("jurimetria.ler")]
+
+    @extend_schema(parameters=FILTROS_TRIBUNAL, responses=JurimetriaTribunalRespostaSerializer)
+    def get(self, request):
+        filtros = jurimetria_tribunal.filtros_da_requisicao(request.query_params)
+        return Response(jurimetria_tribunal.analisar(filtros))
+
+
+class JurimetriaTribunalDecisoesAPIView(APIView):
+    """As decisões por trás do número, com o trecho do dispositivo e como ele foi lido."""
+
+    permission_classes = [IsAuthenticated, TemContextoEscritorio, exige_capability("jurimetria.ler")]
+
+    @extend_schema(
+        parameters=FILTROS_TRIBUNAL
+        + [OpenApiParameter("resultado", str, enum=list(jurimetria_tribunal.RESULTADOS))],
+        responses=JurimetriaTribunalDecisoesRespostaSerializer,
+    )
+    def get(self, request):
+        filtros = jurimetria_tribunal.filtros_da_requisicao(request.query_params, com_resultado=True)
+        return Response(jurimetria_tribunal.decisoes_do_recorte(filtros))
 
 
 class PrazoCalculoAPIView(APIView):

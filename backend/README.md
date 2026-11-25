@@ -72,6 +72,8 @@ GET          dashboard/                  indicadores operacionais
 GET          jurimetria/                 análise descritiva da carteira (filtros: area, ano)
 GET          jurimetria/processos/       processos que sustentam uma taxa (vara, area, ano, resultado)
 GET          jurimetria/exportar/        relatório CSV da análise, registrado na auditoria
+GET          jurimetria/tribunal/        taxa de deferimento nas sentenças do TRT-16 (tema, vara, ano)
+GET          jurimetria/tribunal/decisoes/  as sentenças por trás do número, com o trecho
 GET          pendencias/                 prazos vencidos, próximos 7 dias e andamentos recentes
 GET          prazos/calcular/            vencimento em dias úteis, com a memória do cálculo
 GET          agente/opcoes/              temas, fases e provas do agente de IA
@@ -148,6 +150,14 @@ esconder o que a pessoa não pode usar; quem decide é o servidor.
 | `membros.gerenciar`, `escritorio.editar`, `auditoria.ler` | não | não | sim |
 
 As regras do estagiário são um padrão conservador: para mudar, edite a tabela.
+
+## Jurimetria do tribunal
+
+Base pública e igual para todos os escritórios (`DecisaoTribunal`), importada por
+`python manage.py importar_decisoes_trt <csv> [--validacao <json>]`, que substitui a base
+inteira numa transação. A taxa usa o mesmo cálculo da carteira (n, Wilson, piso) e só aparece
+com o rótulo conferido por leitura humana e a cobertura do recorte medida; sem isso, a resposta
+traz o n e o motivo. Exige `jurimetria.ler`; tokens de API não chegam a estas rotas.
 
 ## Agente de IA
 

@@ -174,6 +174,41 @@ agente/             agente de IA: serviço interno que mede o caso e busca decis
 O corpus é reconstruível: `dataset/collector/` baixa de novo da fonte pública, e
 o pipeline reproduz o dataset a partir dele.
 
+## Jurimetria do TRT-16
+
+A tela Jurimetria abre na visão do tribunal: taxa de deferimento do pedido nas sentenças
+públicas do TRT-16, por vara e por ano, com o n, o intervalo de confiança, a cobertura da
+fonte, o que ficou fora da conta e as sentenças que sustentam cada número (protótipos da
+TED 3). A visão "Seu escritório" é a jurimetria da carteira, que já existia.
+
+**A taxa só aparece depois de validada.** Enquanto o rótulo automático não for conferido por
+leitura humana (gold set) e a cobertura da fonte não for medida, a tela mostra o n e as
+sentenças, com o motivo da supressão (invariante I3).
+
+```bash
+cd dataset/pipeline
+python processar.py --entrada C:/dados/falcao-trt16/normalized --somente sentencas \
+  --temas insalubridade,periculosidade --banco ../data/trt16.db \
+  --manifest C:/dados/falcao-trt16/manifests/falcao.sqlite
+python exportar_jurimetria.py           # -> ../data/jurimetria_trt16.csv (fora do Git)
+
+cd ../../backend/juripredict
+python manage.py importar_decisoes_trt ../../dataset/data/jurimetria_trt16.csv
+```
+
+Para importar em produção, rode o último comando com a `DATABASE_URL` externa do banco do
+Render. A importação substitui a base inteira numa transação. Quando o gold set e a cobertura
+forem medidos, passe-os em `--validacao validacao.json`:
+
+```json
+{"gold_set": {"anotados": 70, "concordancia_deferido": 0.95, "concordancia_indeferido": 0.93},
+ "cobertura": {"geral": 81, "Vara do Trabalho de Balsas": 84, "ano:2025": 79}}
+```
+
+As travas ficam em `JURIMETRIA_TRT_GOLD_MINIMO` (50) e `JURIMETRIA_TRT_CONCORDANCIA_MINIMA`
+(0,9), nas duas classes. O trecho do dispositivo sai sem nome de parte, por uma heurística
+medida no corpus; uma empresa com nome de palavra comum pode passar.
+
 ## Rodando localmente
 
 ```powershell
@@ -222,6 +257,7 @@ python montar_dataset.py                 # grava ../data/juripredict.csv
 python dividir_dataset.py                # confere o corte temporal
 python exportar_dataset.py               # versão publicável + cartão
 python gerar_finetune.py                 # pares texto → rótulo, por destilação
+python exportar_jurimetria.py           # base da jurimetria do TRT-16 (ver abaixo)
 ```
 
 Todo script aceita `--demo`, que roda o caminho de código inteiro com dados
