@@ -1,0 +1,37 @@
+[project]
+name = "agente-juripredict"
+version = "0.1.0"
+description = "Agente do JuriPredict — mede um caso trabalhista, aponta o que melhorar e traz os casos mais próximos"
+requires-python = ">=3.11"
+# Versões exatas (OWASP AST02). O langchain-pinecone fica de fora: prende o SDK do
+# Pinecone abaixo da 8 e traz o langchain-openai junto.
+dependencies = [
+    "fastapi==0.165.0",
+    "google-genai==3.6.1",
+    "langchain==1.5.2",
+    "langchain-google-genai==4.5.2",
+    "langfuse==5.2.0",
+    "langgraph==1.2.24",
+    "pinecone==10.3.0",
+    "pydantic==2.14.1",
+    "python-dotenv==1.2.4",
+    "pyyaml==6.0.3",
+    "uvicorn[standard]==0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx==0.28.1",
+    "pytest==9.1.1",
+    "ruff==0.17.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
