@@ -291,3 +291,63 @@ class LoteDecisoesTribunal(models.Model):
 
     def __str__(self):
         return f"{self.versao} ({self.total})"
+
+
+class CasoEstudo(models.Model):
+    """Caso que o advogado estrutura conversando com o agente de IA. É do escritório."""
+
+    escritorio = models.ForeignKey(
+        "organizations.Escritorio", on_delete=models.CASCADE, related_name="casos_estudo"
+    )
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="casos_estudo",
+        null=True,
+        blank=True,
+    )
+    # vazio até a primeira análise, que sugere um título
+    titulo = models.CharField(max_length=120, blank=True)
+    tema = models.CharField(max_length=20, choices=DecisaoTribunal.TEMAS)
+    fase = models.CharField(max_length=30)
+    orgao_julgador = models.CharField(max_length=200, blank=True)
+    provas = models.JSONField(default=list, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-atualizado_em", "-id")
+
+    def __str__(self):
+        return self.titulo or f"Caso {self.pk}"
+
+
+class MensagemCaso(models.Model):
+    """Uma fala da conversa. A do agente guarda a análise completa e os índices dela."""
+
+    class Autor(models.TextChoices):
+        ADVOGADO = "advogado", "Advogado"
+        AGENTE = "agente", "Agente"
+
+    class Status(models.TextChoices):
+        PENDENTE = "pendente", "Pendente"
+        CONCLUIDA = "concluida", "Concluída"
+        ERRO = "erro", "Erro"
+
+    caso = models.ForeignKey(CasoEstudo, on_delete=models.CASCADE, related_name="mensagens")
+    autor = models.CharField(max_length=10, choices=Autor.choices)
+    texto = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.CONCLUIDA)
+    # só enquanto pendente; nunca sai na API
+    job_id = models.CharField(max_length=64, blank=True)
+    resultado = models.JSONField(null=True, blank=True)
+    erro = models.CharField(max_length=300, blank=True)
+    indice_atual = models.PositiveSmallIntegerField(null=True, blank=True)
+    indice_potencial = models.PositiveSmallIntegerField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("criado_em", "id")
+
+    def __str__(self):
+        return f"{self.caso_id} {self.autor} {self.status}"

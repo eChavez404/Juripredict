@@ -5,10 +5,9 @@ from auditlog.views import EventoAuditoriaViewSet
 from organizations.views import EscritorioViewSet
 
 from .views import (
-    AgenteAnaliseAPIView,
-    AgenteAnalisesAPIView,
     AgenteOpcoesAPIView,
     AlterarSenhaAPIView,
+    CasoEstudoViewSet,
     ClienteViewSet,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
@@ -32,6 +31,7 @@ router.register("processos", ProcessoViewSet, basename="processo")
 router.register("eventos", EventoAgendaViewSet, basename="evento")
 router.register("escritorios", EscritorioViewSet, basename="escritorio")
 router.register("auditoria", EventoAuditoriaViewSet, basename="auditoria")
+router.register("agente/casos", CasoEstudoViewSet, basename="caso-estudo")
 
 
 urlpatterns = [
@@ -52,8 +52,6 @@ urlpatterns = [
     path("pendencias/", PendenciasAPIView.as_view(), name="pendencias"),
     path("prazos/calcular/", PrazoCalculoAPIView.as_view(), name="prazo-calcular"),
     path("agente/opcoes/", AgenteOpcoesAPIView.as_view(), name="agente-opcoes"),
-    path("agente/analises/", AgenteAnalisesAPIView.as_view(), name="agente-analises"),
-    path("agente/analises/<str:analise_id>/", AgenteAnaliseAPIView.as_view(), name="agente-analise"),
     path("", include("organizations.urls")),
     path("", include(router.urls)),
 ]

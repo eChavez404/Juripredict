@@ -162,16 +162,6 @@ class AgenteOpcoesRespostaSerializer(serializers.Serializer):
     provas = AgenteOpcaoSerializer(many=True)
 
 
-class AgenteAnaliseRespostaSerializer(serializers.Serializer):
-    id = serializers.CharField(help_text="Vale só para quem pediu, no mesmo escritório.")
-    status = serializers.CharField(help_text="running, done ou error.")
-    step = serializers.CharField(allow_null=True, help_text="Etapa em andamento.")
-    result = serializers.DictField(
-        allow_null=True, help_text="Contrato em agente/app/agents/analista/schema.py."
-    )
-    error = serializers.CharField(allow_null=True)
-
-
 class PendenciasRespostaSerializer(serializers.Serializer):
     urgentes = serializers.IntegerField(help_text="Prazos vencidos e compromissos até amanhã.")
     total_vencidos = serializers.IntegerField()

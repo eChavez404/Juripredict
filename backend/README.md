@@ -77,8 +77,9 @@ GET          jurimetria/tribunal/decisoes/  as sentenças por trás do número, 
 GET          pendencias/                 prazos vencidos, próximos 7 dias e andamentos recentes
 GET          prazos/calcular/            vencimento em dias úteis, com a memória do cálculo
 GET          agente/opcoes/              temas, fases e provas do agente de IA
-POST         agente/analises/            começa uma análise (20/hora), registrada na auditoria sem o relato
-GET          agente/analises/{id}/       andamento e resultado, só para quem pediu
+GET|POST     agente/casos/               casos em estudo do escritório; criar já pede a primeira análise
+GET|PATCH|DELETE agente/casos/{id}/      conversa e análises; enquanto houver análise, o GET consulta o agente
+POST         agente/casos/{id}/mensagens/  nova mensagem do advogado: reanalisa o caso inteiro (20/hora)
 GET|PATCH    escritorios/{id}/           consulta e atualização do escritório
 GET          escritorios/{id}/membros/   lista da equipe
 PATCH        escritorios/{id}/membros/{membro_id}/ alteração de papel/status
@@ -165,8 +166,12 @@ O serviço fica em `agente/` e não tem tela nem login: o navegador fala só com
 confere login, papel e limite e chama o agente com `AGENTE_URL` e `AGENTE_SEGREDO`. Em produção,
 o agente roda no mesmo contêiner e o `iniciar.sh` define os dois; em desenvolvimento, o `.env`. Sem os dois,
 ou com o segredo diferente, as rotas respondem 503; com o agente sem resposta (ainda
-ligando, por exemplo), 502, e a página insiste. O caso não é gravado no banco, e o `id` da análise é assinado com o
-escritório e o usuário, para que ninguém mais consulte o resultado.
+ligando, por exemplo), 502, e a página insiste.
+
+A conversa fica no banco (`CasoEstudo` e `MensagemCaso`), visível a quem tem `agente.usar` no
+escritório. O id do job do agente fica só no servidor. Criar caso, enviar mensagem e excluir entram
+na auditoria, sem o texto. Uma análise sem resposta por 10 minutos, ou perdida num reinício do
+agente, vira erro e libera nova mensagem.
 
 ## Tokens de API e auditoria de agentes
 

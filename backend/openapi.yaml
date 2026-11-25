@@ -7,46 +7,24 @@ info:
 
     Erros são devolvidos em JSON: 400 (dados inválidos), 401 (credencial ausente, inválida ou expirada), 403 (papel sem a capacidade exigida), 404 (recurso inexistente ou de outro escritório), 409 (exclusão de cliente com processos), 429 (limite de requisições) e 503 (DataJud ou agente de IA sem configuração).
 paths:
-  /api/v1/agente/analises/:
-    post:
-      operationId: agente_analises_create
-      description: Começa uma análise. O caso não é gravado aqui; a auditoria guarda
-        só tema e fase.
+  /api/v1/agente/casos/:
+    get:
+      operationId: agente_casos_list
+      description: Casos que o escritório estrutura com o agente. Cada mensagem refaz
+        a análise do caso inteiro.
       tags:
       - agente
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AgenteCasoRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/AgenteCasoRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/AgenteCasoRequest'
-        required: true
       security:
       - tokenApi: []
       - jwtAuth: []
       responses:
-        '202':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AgenteAnaliseResposta'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Detalhe'
-          description: ''
-        '503':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Detalhe'
+                type: array
+                items:
+                  $ref: '#/components/schemas/CasoEstudoResumo'
           description: ''
       parameters:
       - in: header
@@ -56,14 +34,53 @@ paths:
           format: uuid
         description: Escritório ativo. Obrigatório quando o usuário pertence a mais
           de um.
-  /api/v1/agente/analises/{analise_id}/:
-    get:
-      operationId: agente_analises_retrieve
+    post:
+      operationId: agente_casos_create
+      description: Casos que o escritório estrutura com o agente. Cada mensagem refaz
+        a análise do caso inteiro.
+      tags:
+      - agente
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CasoEstudoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CasoEstudoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CasoEstudoRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasoEstudo'
+          description: ''
       parameters:
-      - in: path
-        name: analise_id
+      - in: header
+        name: X-Escritorio-ID
         schema:
           type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+  /api/v1/agente/casos/{id}/:
+    get:
+      operationId: agente_casos_retrieve
+      description: Casos que o escritório estrutura com o agente. Cada mensagem refaz
+        a análise do caso inteiro.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este caso estudo.
         required: true
       - in: header
         name: X-Escritorio-ID
@@ -82,15 +99,119 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AgenteAnaliseResposta'
+                $ref: '#/components/schemas/CasoEstudo'
           description: ''
-        '404':
+    patch:
+      operationId: agente_casos_partial_update
+      description: Casos que o escritório estrutura com o agente. Cada mensagem refaz
+        a análise do caso inteiro.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este caso estudo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - agente
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCasoEstudoAtualizacaoRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCasoEstudoAtualizacaoRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCasoEstudoAtualizacaoRequest'
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Detalhe'
+                $ref: '#/components/schemas/CasoEstudo'
           description: ''
-        '503':
+    delete:
+      operationId: agente_casos_destroy
+      description: Casos que o escritório estrutura com o agente. Cada mensagem refaz
+        a análise do caso inteiro.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este caso estudo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - agente
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/agente/casos/{id}/mensagens/:
+    post:
+      operationId: agente_casos_mensagens_create
+      description: Casos que o escritório estrutura com o agente. Cada mensagem refaz
+        a análise do caso inteiro.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: Um valor inteiro único que identifica este caso estudo.
+        required: true
+      - in: header
+        name: X-Escritorio-ID
+        schema:
+          type: string
+          format: uuid
+        description: Escritório ativo. Obrigatório quando o usuário pertence a mais
+          de um.
+      tags:
+      - agente
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MensagemNovaRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MensagemNovaRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MensagemNovaRequest'
+        required: true
+      security:
+      - tokenApi: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasoEstudo'
+          description: ''
+        '400':
           content:
             application/json:
               schema:
@@ -2208,68 +2329,6 @@ components:
       required:
       - senha
       - token
-    AgenteAnaliseResposta:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Vale só para quem pediu, no mesmo escritório.
-        status:
-          type: string
-          description: running, done ou error.
-        step:
-          type: string
-          nullable: true
-          description: Etapa em andamento.
-        result:
-          type: object
-          additionalProperties: {}
-          nullable: true
-          description: Contrato em agente/app/agents/analista/schema.py.
-        error:
-          type: string
-          nullable: true
-      required:
-      - error
-      - id
-      - result
-      - status
-      - step
-    AgenteCasoRequest:
-      type: object
-      description: 'Só forma e tamanho: as opções válidas são do agente, que recusa
-        o que não conhece.'
-      properties:
-        tema:
-          type: string
-          minLength: 1
-          maxLength: 40
-        fase:
-          type: string
-          minLength: 1
-          maxLength: 40
-        relato:
-          type: string
-          minLength: 40
-          description: Sem nomes das partes. CPF e CNPJ são mascarados.
-          maxLength: 12000
-        provas:
-          type: array
-          items:
-            type: string
-            minLength: 1
-            maxLength: 40
-          maxItems: 20
-        orgao_julgador:
-          type: string
-          maxLength: 200
-        duvida:
-          type: string
-          maxLength: 500
-      required:
-      - fase
-      - relato
-      - tema
     AgenteOpcao:
       type: object
       properties:
@@ -2402,6 +2461,131 @@ components:
         * `TRIBUTARIO` - Tributário
         * `CRIMINAL` - Criminal
         * `OUTRO` - Outro
+    AutorEnum:
+      enum:
+      - advogado
+      - agente
+      type: string
+      description: |-
+        * `advogado` - Advogado
+        * `agente` - Agente
+    CasoEstudo:
+      type: object
+      description: O caso e a conversa. Ao criar, `relato` é a primeira mensagem do
+        advogado.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        titulo:
+          type: string
+          maxLength: 120
+        tema:
+          $ref: '#/components/schemas/TemaEnum'
+        fase:
+          type: string
+          maxLength: 30
+        orgao_julgador:
+          type: string
+          maxLength: 200
+        provas:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+          maxItems: 20
+        mensagens:
+          type: array
+          items:
+            $ref: '#/components/schemas/MensagemCaso'
+          readOnly: true
+        etapa:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Etapa do agente, enquanto há análise em andamento.
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+        atualizado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - atualizado_em
+      - criado_em
+      - etapa
+      - fase
+      - id
+      - mensagens
+      - tema
+    CasoEstudoRequest:
+      type: object
+      description: O caso e a conversa. Ao criar, `relato` é a primeira mensagem do
+        advogado.
+      properties:
+        titulo:
+          type: string
+          maxLength: 120
+        tema:
+          $ref: '#/components/schemas/TemaEnum'
+        fase:
+          type: string
+          minLength: 1
+          maxLength: 30
+        orgao_julgador:
+          type: string
+          maxLength: 200
+        provas:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+          maxItems: 20
+        relato:
+          type: string
+          writeOnly: true
+          minLength: 40
+          description: Sem nomes das partes. CPF, CNPJ, PIS, e-mail e telefone são
+            mascarados no agente.
+          maxLength: 4000
+      required:
+      - fase
+      - relato
+      - tema
+    CasoEstudoResumo:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        titulo:
+          type: string
+          readOnly: true
+        tema:
+          allOf:
+          - $ref: '#/components/schemas/TemaEnum'
+          readOnly: true
+        fase:
+          type: string
+          readOnly: true
+        indice_atual:
+          type: integer
+          nullable: true
+          readOnly: true
+        atualizado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - atualizado_em
+      - fase
+      - id
+      - indice_atual
+      - tema
+      - titulo
     Cliente:
       type: object
       properties:
@@ -3209,6 +3393,70 @@ components:
       - id
       - papel
       - usuario
+    MensagemCaso:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        autor:
+          allOf:
+          - $ref: '#/components/schemas/AutorEnum'
+          readOnly: true
+        texto:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MensagemCasoStatusEnum'
+          readOnly: true
+        erro:
+          type: string
+          readOnly: true
+        resultado:
+          readOnly: true
+          nullable: true
+        indice_atual:
+          type: integer
+          readOnly: true
+          nullable: true
+        indice_potencial:
+          type: integer
+          readOnly: true
+          nullable: true
+        criado_em:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - autor
+      - criado_em
+      - erro
+      - id
+      - indice_atual
+      - indice_potencial
+      - resultado
+      - status
+      - texto
+    MensagemCasoStatusEnum:
+      enum:
+      - pendente
+      - concluida
+      - erro
+      type: string
+      description: |-
+        * `pendente` - Pendente
+        * `concluida` - Concluída
+        * `erro` - Erro
+    MensagemNovaRequest:
+      type: object
+      properties:
+        texto:
+          type: string
+          minLength: 2
+          maxLength: 4000
+      required:
+      - texto
     Metricas:
       type: object
       properties:
@@ -3290,6 +3538,27 @@ components:
         * `ADMIN` - Administrador
         * `ADVOGADO` - Advogado
         * `ESTAGIARIO` - Estagiário
+    PatchedCasoEstudoAtualizacaoRequest:
+      type: object
+      description: 'O que muda entre uma mensagem e outra: título, fase, órgão e provas.'
+      properties:
+        titulo:
+          type: string
+          maxLength: 120
+        fase:
+          type: string
+          minLength: 1
+          maxLength: 30
+        orgao_julgador:
+          type: string
+          maxLength: 200
+        provas:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+          maxItems: 20
     PatchedClienteRequest:
       type: object
       properties:
@@ -3991,6 +4260,14 @@ components:
       - suficiente
       - total
       - vara
+    TemaEnum:
+      enum:
+      - insalubridade
+      - periculosidade
+      type: string
+      description: |-
+        * `insalubridade` - Adicional de insalubridade
+        * `periculosidade` - Adicional de periculosidade
     TokenApi:
       type: object
       properties:
