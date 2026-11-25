@@ -15,7 +15,7 @@ const INTERVALO_MS = 2000;
 // Acima do pior caso do agente: busca na base mais duas tentativas do modelo.
 const LIMITE_MS = 6 * 60 * 1000;
 
-// Hospedado no plano gratuito, o agente hiberna sem uso e leva cerca de um minuto para voltar.
+// O agente liga depois do site: ao acordar da hibernação do plano gratuito, demora um pouco mais.
 const ESPERA_AGENTE_MS = 2 * 60 * 1000;
 const NOVA_TENTATIVA_MS = 5000;
 const LIGANDO = 'Ligando o agente. Pode levar até dois minutos...';
@@ -203,7 +203,7 @@ const AgenteConteudo = () => {
     setEtapa('prepare_context');
     const continuar = () => ativo.current;
     try {
-      // Escrever o relato pode levar mais que os 15 minutos até a hibernação: acorda antes de enviar.
+      // Escrever o relato pode levar mais que os 15 minutos até a hibernação: confere antes de enviar.
       await insistir(agenteService.opcoes, continuar, () => { if (ativo.current) setEtapa('ligando'); });
       if (!ativo.current) return;
       setEtapa('prepare_context');

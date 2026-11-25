@@ -4,7 +4,7 @@ Agente de IA que mede um caso trabalhista, aponta o que melhorar e traz os casos
 
 ## Sobre o projeto
 
-É o agente do [JuriPredict](../README.md). Não tem tela: o advogado usa a página **Agente de IA** do app React, e só o backend Django chama este serviço. Tem dependências e `.env` próprios, sem acesso ao banco nem às chaves do Django. Cobre dois temas: adicional de insalubridade e adicional de periculosidade. A estrutura segue a do Treino MD Chefe.
+É o agente do [JuriPredict](../README.md). Não tem tela: o advogado usa a página **Agente de IA** do app React, e só o backend Django chama este serviço, que em produção roda no mesmo contêiner do site. Tem dependências e `.env` próprios, sem acesso ao banco nem às chaves do Django. Cobre dois temas: adicional de insalubridade e adicional de periculosidade. A estrutura segue a do Treino MD Chefe.
 
 **Situação:** estrutura pronta. A base de casos no Pinecone ainda não existe; sem ela, o agente responde só pelos critérios do tema e avisa isso na resposta.
 
@@ -83,11 +83,13 @@ Cada vetor no Pinecone precisa trazer os metadados de `RetrievedCase`, em `app/c
 - Os trechos da base precisam ser indexados sem os nomes das partes. O texto da decisão não é devolvido pela API.
 - Os logs não registram relato, prompt nem resposta.
 
-## Hospedagem (Render)
+## Hospedagem
 
-O `render.yaml` da raiz declara o serviço `juripredict-agente`, no plano gratuito, a partir do `Dockerfile` desta pasta. O `AGENTE_SEGREDO` é gerado no serviço `juripredict` e copiado para cá. As chaves do Google, do Pinecone e do Langfuse são preenchidas à mão no painel, em Environment.
+Em produção, o agente roda **no mesmo serviço do site**, como um segundo processo (`backend/iniciar.sh`). Ele só atende em `127.0.0.1`, então não tem URL pública, e o segredo é gerado a cada partida. No Render, as chaves (`GOOGLE_API_KEY` e, se usados, Pinecone e Langfuse) ficam em Environment do serviço `juripredict`.
 
-No plano gratuito, o serviço tem URL pública (não recebe tráfego da rede privada) e hiberna após 15 minutos sem uso. A página do app percebe a hibernação, avisa e espera o agente voltar. Um reinício apaga as análises em andamento.
+O processo recebe só as variáveis da lista do `iniciar.sh`, sem as chaves do Django nem a do banco, e não consegue lê-las do processo do site (`gunicorn.conf.py`). É um isolamento menor que o de um contêiner próprio: os dois compartilham memória, CPU, usuário do sistema e rede.
+
+O agente liga alguns segundos depois do site, e a página espera. Se ele cair, volta em 10 segundos; as análises em andamento se perdem.
 
 ## Testes
 
