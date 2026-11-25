@@ -17,7 +17,9 @@ from app.agents.analista import (
     analyze,
 )
 from app.agents.analista.schema import Evidence, Option, SimilarCase, Stage, Theme
+from app.core import vector_store
 from app.core.api_errors import analysis_error
+from app.core.config import GOOGLE_API_KEY
 
 router = APIRouter(tags=["Analista"])
 
@@ -41,7 +43,13 @@ def _options(enum: type[Enum]) -> list[Option]:
 @router.get("/options", response_model=OptionsResponse)
 def options():
     """Opções do formulário; a fonte da verdade são os enums do agente."""
-    return OptionsResponse(temas=_options(Theme), fases=_options(Stage), provas=_options(Evidence))
+    return OptionsResponse(
+        ia_configurada=bool(GOOGLE_API_KEY),
+        base_configurada=vector_store.is_configured(),
+        temas=_options(Theme),
+        fases=_options(Stage),
+        provas=_options(Evidence),
+    )
 
 
 def _run_job(job: AnalysisJob, request: CaseRequest) -> None:

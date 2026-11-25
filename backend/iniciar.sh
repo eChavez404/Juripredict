@@ -42,6 +42,7 @@ $LIMPO $MANTER nginx -e stderr -c /tmp/nginx.conf &
         HOST=127.0.0.1 PORT=8001 \
         AGENTE_SEGREDO="$AGENTE_SEGREDO" \
         LLM_MODEL="${LLM_MODEL:-google_genai:gemini-3.8-flash}" \
+        LLM_FALLBACK_MODEL="${LLM_FALLBACK_MODEL:-google_genai:gemini-3.5-flash-lite}" \
         GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
         EMBEDDING_MODEL="${EMBEDDING_MODEL:-gemini-embedding-2}" \
         EMBEDDING_DIMENSIONS="${EMBEDDING_DIMENSIONS:-768}" \
