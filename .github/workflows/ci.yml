@@ -119,6 +119,8 @@ jobs:
         run: uv run ruff check . && uv run ruff format --check .
       - name: Executar testes
         run: uv run pytest -q
+      - name: Construir imagem
+        run: docker build --tag juripredict-agente:ci .
 
   frontend:
     name: Frontend · React

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Layout from '../components/Layout';
@@ -53,6 +54,10 @@ const enviar = async () => {
   fireEvent.click(screen.getByLabelText('PPP'));
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Analisar caso' })); });
 };
+
+const semResposta = (status = 502) => new AxiosError('x', undefined, undefined, undefined, {
+  status, data: { detail: `falha ${status}` },
+} as never);
 
 const avancar = () => act(async () => { await vi.advanceTimersByTimeAsync(2000); });
 
@@ -131,6 +136,57 @@ describe('Agente', () => {
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.queryByLabelText('Relato do caso')).not.toBeInTheDocument();
+  });
+
+  it('espera o agente hibernado voltar e então mostra o formulário', async () => {
+    vi.mocked(agenteService.opcoes).mockRejectedValueOnce(semResposta());
+    render(tela());
+
+    expect(await screen.findByText(/Ligando o agente/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+
+    expect(await screen.findByLabelText('Relato do caso')).toBeInTheDocument();
+    expect(screen.queryByText(/Ligando o agente/)).not.toBeInTheDocument();
+  });
+
+  it('desiste depois de dois minutos e, sem configuração, nem espera', async () => {
+    vi.mocked(agenteService.opcoes).mockRejectedValue(semResposta());
+    const { unmount } = render(tela());
+    await act(async () => { await vi.advanceTimersByTimeAsync(130_000); });
+    expect(screen.getByRole('alert')).toHaveTextContent('falha 502');
+    unmount();
+
+    vi.mocked(agenteService.opcoes).mockClear().mockRejectedValue(semResposta(503));
+    render(tela());
+    expect(await screen.findByRole('alert')).toHaveTextContent('falha 503');
+    expect(agenteService.opcoes).toHaveBeenCalledTimes(1);
+  });
+
+  it('acorda o agente antes de enviar e nunca repete o envio', async () => {
+    render(tela());
+    await screen.findByLabelText('Relato do caso');
+    vi.mocked(agenteService.opcoes).mockRejectedValueOnce(semResposta());
+    vi.mocked(agenteService.iniciar).mockRejectedValue(semResposta());
+    await enviar();
+
+    expect(screen.getByText(/Ligando o agente/)).toBeInTheDocument();
+    expect(agenteService.iniciar).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+
+    expect(agenteService.iniciar).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('alert')).toHaveTextContent('falha 502');
+  });
+
+  it('uma consulta sem resposta não derruba a análise em andamento', async () => {
+    vi.mocked(agenteService.consultar)
+      .mockRejectedValueOnce(semResposta())
+      .mockResolvedValueOnce(analise({ status: 'done', result: resultado }));
+    render(tela());
+    await enviar();
+    await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
+
+    expect(screen.getByRole('region', { name: 'Resultado da análise' })).toBeInTheDocument();
   });
 
   it('para de consultar ao sair da tela', async () => {

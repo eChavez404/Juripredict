@@ -46,7 +46,7 @@ cp .env.example .env
 uv run python -m app.main
 ```
 
-A documentação da API fica em http://127.0.0.1:8001/docs. Para usar pelo app, suba também o backend e o frontend, com `AGENTE_URL=http://127.0.0.1:8001` e o mesmo `AGENTE_SEGREDO` no `.env` do backend.
+Para usar pelo app, suba também o backend e o frontend, com `AGENTE_URL=http://127.0.0.1:8001` e o mesmo `AGENTE_SEGREDO` no `.env` do backend.
 
 ### Variáveis do `.env`
 
@@ -68,7 +68,7 @@ A documentação da API fica em http://127.0.0.1:8001/docs. Para usar pelo app, 
 | `POST` | `/api/v1/analyses` | Inicia a análise e devolve um `job_id` |
 | `GET` | `/api/v1/analyses/{job_id}` | Consulta o andamento e o resultado |
 
-Fora o `/health`, toda rota exige `Authorization: Bearer <AGENTE_SEGREDO>`.
+Fora o `/health`, tudo exige `Authorization: Bearer <AGENTE_SEGREDO>`, conferido antes de ler o corpo da requisição. Não há documentação pública da API.
 
 Os jobs ficam na memória de um único processo: somem ao reiniciar o serviço e não funcionam com vários workers. Por padrão, o serviço só atende em `127.0.0.1`.
 
@@ -82,6 +82,12 @@ Cada vetor no Pinecone precisa trazer os metadados de `RetrievedCase`, em `app/c
 - CPF e CNPJ são mascarados na entrada da API e nos trechos da base, antes de chegar ao Google e ao Langfuse. **Nomes não são mascarados:** o formulário pede que não sejam informados.
 - Os trechos da base precisam ser indexados sem os nomes das partes. O texto da decisão não é devolvido pela API.
 - Os logs não registram relato, prompt nem resposta.
+
+## Hospedagem (Render)
+
+O `render.yaml` da raiz declara o serviço `juripredict-agente`, no plano gratuito, a partir do `Dockerfile` desta pasta. O `AGENTE_SEGREDO` é gerado no serviço `juripredict` e copiado para cá. As chaves do Google, do Pinecone e do Langfuse são preenchidas à mão no painel, em Environment.
+
+No plano gratuito, o serviço tem URL pública (não recebe tráfego da rede privada) e hiberna após 15 minutos sem uso. A página do app percebe a hibernação, avisa e espera o agente voltar. Um reinício apaga as análises em andamento.
 
 ## Testes
 
