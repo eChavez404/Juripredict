@@ -1,5 +1,8 @@
 import api from './api';
 import type {
+  AgenteAnalise,
+  AgenteCaso,
+  AgenteOpcoes,
   AndamentosResposta,
   Cliente,
   ClientePayload,
@@ -112,6 +115,14 @@ export const jurimetriaService = {
     link.click();
     URL.revokeObjectURL(url);
   },
+};
+
+export const agenteService = {
+  opcoes: async () => (await api.get<AgenteOpcoes>('/agente/opcoes/')).data,
+  iniciar: async (caso: AgenteCaso) => (await api.post<AgenteAnalise>('/agente/analises/', caso)).data,
+  consultar: async (id: string) => (
+    await api.get<AgenteAnalise>(`/agente/analises/${encodeURIComponent(id)}/`)
+  ).data,
 };
 
 export const prazoService = {

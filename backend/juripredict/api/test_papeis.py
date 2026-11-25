@@ -20,7 +20,7 @@ User = get_user_model()
 SENHA = "uma-senha-bem-forte-123"
 NOVAS = {
     "processos.valores.ler", "jurimetria.ler", "clientes.documento.ler",
-    "processos.excluir", "clientes.excluir",
+    "processos.excluir", "clientes.excluir", "agente.usar",
 }
 PAPEL = MembroEscritorio.Papel
 

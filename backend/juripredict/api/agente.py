@@ -1,0 +1,95 @@
+"""Cliente do agente de IA (pasta agente/ na raiz), um serviço interno.
+
+O navegador nunca fala com o agente: passa por aqui, com login, papel e limite de
+requisições. O agente não recebe usuário, escritório nem token, só o caso e o segredo.
+Só stdlib, como o cliente do DataJud.
+"""
+
+import json
+from http.client import HTTPException
+from urllib import error, request
+
+from django.conf import settings
+from django.core import signing
+from rest_framework.exceptions import APIException, NotFound
+
+# Abaixo dos 15 s do frontend. O agente responde na hora: a análise corre depois, por consulta.
+TIMEOUT_SEGUNDOS = 10
+SAL = "agente.analise"
+# Os resultados ficam na memória do agente; um dia depois não há o que consultar.
+VALIDADE_SEGUNDOS = 24 * 3600
+NAO_ENCONTRADA = "Análise não encontrada. Envie o caso de novo."
+
+
+class AgenteIndisponivel(APIException):
+    status_code = 502
+    default_detail = "O agente de IA não respondeu. Tente novamente mais tarde."
+
+
+class AgenteNaoConfigurado(APIException):
+    status_code = 503
+    default_detail = "O agente de IA não está configurado neste ambiente."
+
+
+class CasoRecusado(APIException):
+    status_code = 400
+    default_detail = "O agente não aceitou o caso. Confira os campos do formulário."
+
+
+def _chamar(caminho, corpo=None):
+    if not settings.AGENTE_URL or not settings.AGENTE_SEGREDO:
+        raise AgenteNaoConfigurado
+    requisicao = request.Request(
+        f"{settings.AGENTE_URL}/api/v1/{caminho}",
+        data=None if corpo is None else json.dumps(corpo).encode(),
+        headers={
+            "Authorization": f"Bearer {settings.AGENTE_SEGREDO}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with request.urlopen(requisicao, timeout=TIMEOUT_SEGUNDOS) as resposta:
+            return json.loads(resposta.read().decode())
+    except error.HTTPError as exc:
+        # Sem repassar o corpo: o 422 do agente devolve o que foi enviado, com o relato.
+        if exc.code == 422:
+            raise CasoRecusado from None
+        if exc.code == 404:
+            raise NotFound(NAO_ENCONTRADA) from None
+        raise AgenteIndisponivel from None
+    except (OSError, HTTPException, ValueError):
+        raise AgenteIndisponivel from None
+
+
+def _analise(job):
+    return {campo: job.get(campo) for campo in ("status", "step", "result", "error")}
+
+
+def opcoes():
+    return _chamar("options")
+
+
+def iniciar(caso):
+    job = _chamar("analyses", {campo: valor for campo, valor in caso.items() if valor})
+    return job["job_id"], _analise(job)
+
+
+def consultar(job_id):
+    return _analise(_chamar(f"analyses/{job_id}"))
+
+
+def assinar(job_id, escritorio, usuario):
+    """Prende a análise a quem a pediu sem precisar de tabela: o agente não conhece usuários."""
+    return signing.dumps([job_id, str(escritorio.pk), usuario.pk], salt=SAL)
+
+
+def conferir(analise_id, escritorio, usuario):
+    try:
+        job_id, escritorio_id, usuario_id = signing.loads(
+            analise_id, salt=SAL, max_age=VALIDADE_SEGUNDOS
+        )
+    except signing.BadSignature:
+        raise NotFound(NAO_ENCONTRADA) from None
+    if (escritorio_id, usuario_id) != (str(escritorio.pk), usuario.pk):
+        raise NotFound(NAO_ENCONTRADA)
+    return job_id

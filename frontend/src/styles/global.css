@@ -950,6 +950,11 @@ h6 {
   background: rgba(210, 170, 97, 0.16);
 }
 
+.status-badge--red {
+  color: var(--danger);
+  background: rgba(200, 121, 121, 0.14);
+}
+
 .status-badge--gray {
   color: #71868c;
   background: #edf2f3;
@@ -2800,4 +2805,90 @@ h6 {
   .jurimetria-filtros__ver {
     margin-left: 0;
   }
+}
+
+/* Tela de consentimento do conector MCP (pages/Autorizar.tsx) */
+.consentimento__lista {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.consentimento__lista li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+.consentimento__lista svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--success);
+}
+
+.consentimento__lista .consentimento__nunca svg {
+  color: var(--danger);
+}
+
+.settings-card__subtitulo {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+/* Agente de IA */
+.form-field .agente-relato {
+  min-height: 180px;
+}
+
+.agente-provas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.5rem;
+}
+
+.agente-resultado {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+.agente-texto,
+.agente-lista,
+.agente-itens small {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+
+.agente-lista {
+  padding-left: 1.1rem;
+}
+
+.agente-itens {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+}
+
+.agente-itens li {
+  display: grid;
+  gap: 0.2rem;
+  overflow-wrap: anywhere;
+}
+
+.agente-itens li + li {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.agente-itens .eyebrow {
+  margin-bottom: 0;
+}
+
+.agente-itens strong {
+  font-size: 0.8rem;
 }

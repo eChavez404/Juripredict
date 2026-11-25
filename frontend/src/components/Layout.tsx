@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Scale,
   Settings,
   TrendingUp,
   Users,
@@ -23,6 +24,7 @@ const navItems: { label: string; icon: typeof Users; path: string; capability?: 
   { label: 'Clientes', icon: Users, path: '/clientes' },
   { label: 'Agenda e prazos', icon: CalendarDays, path: '/agenda' },
   { label: 'Jurimetria', icon: TrendingUp, path: '/jurimetria', capability: CAPABILITIES.jurimetriaVisualizar },
+  { label: 'Agente de IA', icon: Scale, path: '/agente', capability: CAPABILITIES.agenteUsar },
 ];
 
 const pageLabels: Record<string, string> = {
@@ -31,6 +33,7 @@ const pageLabels: Record<string, string> = {
   '/clientes': 'Relacionamento com clientes',
   '/agenda': 'Agenda e prazos',
   '/jurimetria': 'Inteligência e jurimetria',
+  '/agente': 'Agente de IA',
   '/configuracoes': 'Configurações da conta',
   '/configuracoes/equipe': 'Equipe e permissões',
   '/configuracoes/auditoria': 'Trilha de auditoria',

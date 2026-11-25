@@ -7,8 +7,8 @@
 
 `collector.falcao` baixa uma consulta de cada vez. Aqui o intervalo e fatiado
 em meses, e o mes cujo total chega a `--limite` e dividido ao meio ate caber:
-a paginacao do servidor pode nao alcancar resultados alem de certa posicao, e
-o total informado pode vir truncado nesse teto.
+a paginacao do servidor nao passa de 200 resultados por busca, e o total
+informado vem truncado em 10.000.
 
 Os meses vao do mais recente ao mais antigo: o FALCAO tem cota diaria de
 requisicoes, a coleta completa leva semanas, e o recente e o mais util.
@@ -29,9 +29,10 @@ from .models import Consulta, ErroFalcao, ErroLimite, ErroSessao
 from .session import sessao_http
 from .storage import Armazenamento
 
-# ponytail: teto usual de paginacao do Elasticsearch, nao verificado no FALCAO;
-# confirmar pedindo uma pagina alem de limite/10 numa janela grande.
-LIMITE_PADRAO = 10_000
+# Verificado em 2026-11-17: alem da pagina 20 (200 resultados com 10 por pagina) o FALCAO
+# responde 403, "Seu usuario nao tem autorizacao para ir alem da pagina 20". A janela que
+# chega a esse total e dividida ao meio ate caber.
+LIMITE_PADRAO = 200
 
 
 def meses(ini: date, fim: date):
@@ -98,7 +99,11 @@ def main(argv=None) -> int:
             for ini, fim, total in janelas(m_ini, m_fim, contar, a.limite):
                 c = consulta(ini, fim)
                 print(f"\n== {ini} a {fim}: {total} documentos")
-                if total == 0 or concluida(armazenamento, c):
+                if total == 0:
+                    # grava a página vazia: sem ela, a janela seria contada de novo a cada rodada
+                    armazenamento.gravar_pagina(c, primeiras[(ini, fim)])
+                    continue
+                if concluida(armazenamento, c):
                     continue
                 coletar(cliente, armazenamento, c, math.ceil(min(total, a.limite) / PAGE_SIZE_MAX),
                         primeira=primeiras.get((ini, fim)))

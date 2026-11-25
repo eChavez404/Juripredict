@@ -76,7 +76,7 @@ jobs:
       - name: Verificar migrations pendentes
         run: python manage.py makemigrations --check --dry-run
       - name: Executar testes de negócio e segurança
-        run: python manage.py test api.tests api.test_key_rotation organizations auditlog accounts api.test_lembretes api.test_validators api.test_estatistica api.test_andamentos api.test_documentos api.test_papeis api.test_openapi api.test_regressoes api.test_prazos api.test_jurimetria_recortes --verbosity=2
+        run: python manage.py test api.tests api.test_key_rotation organizations auditlog accounts api.test_lembretes api.test_validators api.test_estatistica api.test_andamentos api.test_documentos api.test_papeis api.test_openapi api.test_regressoes api.test_prazos api.test_jurimetria_recortes api.test_agente --verbosity=2
       - name: Validar migração dos dados existentes
         run: python manage.py test api.test_migrations --verbosity=2
 
@@ -98,6 +98,27 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Executar testes
         run: python -m unittest -q
+
+  agente:
+    name: Agente · testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agente
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Instalar dependências
+        run: |
+          python -m pip install uv==0.12.15
+          uv sync --locked
+      - name: Verificar lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Executar testes
+        run: uv run pytest -q
 
   frontend:
     name: Frontend · React

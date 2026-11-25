@@ -23,7 +23,7 @@ vi.mock('../services/juripredict', () => ({
 
 // o que o advogado tem e o estagiário não (espelha organizations/capabilities.py)
 const RESTRITAS = [
-  'processos.valores.ler', 'jurimetria.ler', 'clientes.documento.ler', 'processos.excluir', 'clientes.excluir',
+  'processos.valores.ler', 'jurimetria.ler', 'clientes.documento.ler', 'processos.excluir', 'clientes.excluir', 'agente.usar',
 ];
 const COMUNS = ['clientes.gerenciar', 'processos.gerenciar', 'agenda.gerenciar'];
 

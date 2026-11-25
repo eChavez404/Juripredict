@@ -241,6 +241,21 @@ class ProcessoResumoSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class AgenteCasoSerializer(serializers.Serializer):
+    """Só forma e tamanho: as opções válidas são do agente, que recusa o que não conhece."""
+
+    tema = serializers.CharField(max_length=40)
+    fase = serializers.CharField(max_length=40)
+    relato = serializers.CharField(
+        min_length=40, max_length=12000, help_text="Sem nomes das partes. CPF e CNPJ são mascarados."
+    )
+    provas = serializers.ListField(
+        child=serializers.CharField(max_length=40), required=False, max_length=20
+    )
+    orgao_julgador = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    duvida = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
 class PrazoParametrosSerializer(serializers.Serializer):
     data_base = serializers.DateField(
         help_text="Data da ciência, ou da disponibilização no diário eletrônico."

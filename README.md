@@ -127,6 +127,7 @@ depois que a qualidade da base for medida.
 | Frontend | React |
 | Modelagem preditiva | scikit-learn, LightGBM *(previsto)* |
 | Serviço de inferência | FastAPI *(previsto)* |
+| Agente de IA | FastAPI, LangChain, LangGraph, Gemini, Pinecone |
 
 ## Estrutura
 
@@ -156,6 +157,7 @@ dataset/
 publicacao/         **o dataset publicado** — CSV + cartão de descrição
 backend/            aplicação Django e API REST com CRUD e autenticação JWT
 frontend/           aplicação React integrada à API
+agente/             agente de IA: serviço interno que mede o caso e busca decisões próximas
 ```
 
 ### O que está no repositório e o que fica local
@@ -186,8 +188,8 @@ Copy-Item backend\juripredict\.env.example backend\juripredict\.env
 python backend\juripredict\manage.py migrate
 ```
 
-As instruções específicas da API e da interface estão em `backend/README.md` e
-`frontend/README.md`. Rode as migrações antes do primeiro acesso. Para subir a
+As instruções específicas da API, da interface e do agente estão em `backend/README.md`,
+`frontend/README.md` e `agente/README.md`. Rode as migrações antes do primeiro acesso. Para subir a
 aplicação completa com PostgreSQL:
 
 ```powershell
@@ -310,7 +312,8 @@ redefinido antes de o número significar alguma coisa.
 | Andamento automático dos processos (DataJud) | implementado e testado; avisa por e-mail as novidades; depende da chave do DataJud e do cron; TRTs e TRFs |
 | Documentação da API | OpenAPI 3 em `backend/openapi.yaml`, conferida por teste; Swagger UI em `/api/docs/` só em desenvolvimento |
 | Papéis aplicados no servidor | estagiário não vê valor da causa nem jurimetria, vê CPF/CNPJ mascarado e não exclui; regras padrão a confirmar com o escritório |
-| Servidor MCP somente leitura (`mcp_server/`) | implementado e testado ponta a ponta; token de API revogável, rotas fixas e toda consulta auditada; sem OAuth |
+| Servidor MCP somente leitura (`mcp_server/`) | implementado e testado ponta a ponta; local com token de API ou hospedado como conector remoto, autorizado por OAuth 2.1 numa tela do app; rotas fixas e toda consulta auditada |
+| Agente de IA (`agente/`) | página no app, atrás do login, e serviço interno chamado só pelo backend; testado ponta a ponta com IA e base simuladas; a base de casos no Pinecone ainda não existe e o serviço ainda não está no Docker nem no Render |
 | Vários documentos por processo | implementado e testado; até 50 por processo; depende do R2 em produção |
 | LGPD: aceite dos termos, exportação e exclusão de conta | implementado e testado; texto jurídico em revisão |
 | Sessões | renovação com rotação e logout que revoga no servidor |

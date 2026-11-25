@@ -74,6 +74,9 @@ GET          jurimetria/processos/       processos que sustentam uma taxa (vara,
 GET          jurimetria/exportar/        relatório CSV da análise, registrado na auditoria
 GET          pendencias/                 prazos vencidos, próximos 7 dias e andamentos recentes
 GET          prazos/calcular/            vencimento em dias úteis, com a memória do cálculo
+GET          agente/opcoes/              temas, fases e provas do agente de IA
+POST         agente/analises/            começa uma análise (20/hora), registrada na auditoria sem o relato
+GET          agente/analises/{id}/       andamento e resultado, só para quem pediu
 GET|PATCH    escritorios/{id}/           consulta e atualização do escritório
 GET          escritorios/{id}/membros/   lista da equipe
 PATCH        escritorios/{id}/membros/{membro_id}/ alteração de papel/status
@@ -141,9 +144,17 @@ esconder o que a pessoa não pode usar; quem decide é o servidor.
 | `jurimetria.ler` (a rota responde 403) | não | sim | sim |
 | `clientes.documento.ler` (sem ela o CPF/CNPJ vem mascarado e não é alterado) | não | sim | sim |
 | `processos.excluir` e `clientes.excluir` (403) | não | sim | sim |
+| `agente.usar` (403) | não | sim | sim |
 | `membros.gerenciar`, `escritorio.editar`, `auditoria.ler` | não | não | sim |
 
 As regras do estagiário são um padrão conservador: para mudar, edite a tabela.
+
+## Agente de IA
+
+O serviço fica em `agente/` e não tem tela nem login: o navegador fala só com o backend, que
+confere login, papel e limite e chama o agente com `AGENTE_URL` e `AGENTE_SEGREDO`. Sem os dois,
+as rotas respondem 503. O caso não é gravado no banco, e o `id` da análise é assinado com o
+escritório e o usuário, para que ninguém mais consulte o resultado.
 
 ## Tokens de API e auditoria de agentes
 
@@ -161,6 +172,30 @@ sessão de pessoa (JWT). Para tokens, os links assinados de arquivo vêm nulos.
 cada tentativa bloqueada (`token_api.negado`), com credencial (prefixo), caminho, status e os
 nomes dos filtros, nunca os valores. Sem escritório válido no cabeçalho não há onde gravar:
 fica um aviso no log da aplicação. Uma falha ao auditar não derruba a resposta.
+
+## Conector MCP remoto (OAuth 2.1)
+
+Para conectar o Claude ou o agente do JuriPredict sem copiar token, o backend é servidor de
+autorização OAuth 2.1 (`accounts/oauth.py`). O aplicativo descobre tudo por
+`/.well-known/oauth-authorization-server`, registra-se em `/oauth/registrar` (DCR, RFC 7591),
+manda a pessoa à tela `/autorizar` do app e troca o código em `/oauth/token`, com PKCE S256
+obrigatório. `/oauth/revogar` (RFC 7009) desliga a conexão; `/oauth/introspeccao` (RFC 7662)
+é só para o serviço MCP, com o segredo compartilhado.
+
+O access token é um `TokenApi` ligado a uma `ConexaoOAuth`: herda a lista de rotas de
+leitura, a revogação e a auditoria acima, vale `OAUTH_ACESSO_SEGUNDOS` (1 h) e só enxerga o
+escritório escolhido no consentimento. O `X-Escritorio-ID` é ignorado, e `auth/me/` fica de
+fora, porque listaria os outros escritórios. O refresh token vale `OAUTH_RENOVACAO_DIAS` (30)
+e gira a cada uso; reusar um já trocado fora de 30 s, ou reusar um código, revoga a conexão.
+As conexões aparecem em Configurações > Acesso por agentes, onde se desconecta; sair do
+escritório e trocar a senha também cortam o acesso. Na auditoria: `oauth.conexao_criada`,
+`oauth.conexao_revogada`, `oauth.reuso_de_codigo` e `oauth.reuso_de_renovacao`.
+
+| Variável | Uso |
+|---|---|
+| `OAUTH_RECURSOS` | URLs dos servidores MCP que aceitam os tokens (RFC 8707). Vazia, o conector fica desligado |
+| `OAUTH_SEGREDO_INTROSPECCAO` | segredo que o serviço MCP usa para perguntar se um token vale |
+| `OAUTH_EMISSOR` | URL pública do app; padrão `FRONTEND_URL` |
 
 ## Documentos do processo
 

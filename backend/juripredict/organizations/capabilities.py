@@ -15,14 +15,15 @@ CAPABILITIES_COMUNS = frozenset(
 )
 
 # O que o estagiário NÃO tem, por padrão: o valor da causa, a jurimetria da carteira, o
-# CPF/CNPJ completo dos clientes (vê mascarado e não o altera) e a exclusão de processos e
-# clientes. Os demais papéis têm tudo isso.
+# CPF/CNPJ completo dos clientes (vê mascarado e não o altera), a exclusão de processos e
+# clientes e o agente de IA. Os demais papéis têm tudo isso.
 CAPABILITIES_DE_ADVOGADO = CAPABILITIES_COMUNS | {
     "processos.valores.ler",
     "jurimetria.ler",
     "clientes.documento.ler",
     "processos.excluir",
     "clientes.excluir",
+    "agente.usar",
 }
 
 CAPABILITIES_POR_PAPEL = {

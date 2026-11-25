@@ -22,13 +22,18 @@ class ErroApi(ToolError):
     """
 
 
+def criar_http(base_url, transport=None):
+    return httpx.Client(base_url=base_url.rstrip("/") + "/", timeout=TIMEOUT, transport=transport)
+
+
 class ClienteApi:
-    def __init__(self, *, base_url, token, escritorio_id=None, transport=None):
+    """``http`` permite dividir uma conexão entre requisições: no modo HTTP cada chamada de
+    ferramenta monta um cliente com o token de quem a fez."""
+
+    def __init__(self, *, token, base_url=None, escritorio_id=None, transport=None, http=None):
         self._token = token
         self._escritorio_id = escritorio_id or None
-        self._http = httpx.Client(
-            base_url=base_url.rstrip("/") + "/", timeout=TIMEOUT, transport=transport
-        )
+        self._http = http or criar_http(base_url, transport)
 
     @classmethod
     def do_ambiente(cls):
@@ -69,8 +74,8 @@ class ClienteApi:
             raise ErroApi("Não foi possível falar com a API do JuriPredict.") from exc
         if resposta.status_code == 401:
             raise ErroApi(
-                "Token recusado: está inválido, expirado ou foi revogado. "
-                "Gere outro em Configurações > Acesso por agentes."
+                "Token recusado: está inválido, expirado ou foi revogado. Gere outro token "
+                "ou reconecte o aplicativo em Configurações > Acesso por agentes."
             )
         if resposta.status_code == 404:
             raise ErroApi("Não encontrado neste escritório.")
