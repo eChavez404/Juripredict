@@ -122,16 +122,18 @@ MaskedText = Annotated[str, AfterValidator(mask_documents)]
 
 
 class CaseRequest(BaseModel):
-    """Dados do caso informados no formulário."""
+    """O caso como está agora: o relato inicial e tudo o que o advogado acrescentou na conversa."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     tema: Theme
     fase: Stage
-    relato: MaskedText = Field(min_length=40, max_length=12000)
+    relato: MaskedText = Field(min_length=40, max_length=20000)
     provas: list[Evidence] = Field(default_factory=list, max_length=len(Evidence))
     orgao_julgador: MaskedText | None = Field(default=None, max_length=200)
     duvida: MaskedText | None = Field(default=None, max_length=500)
+    # Última mensagem do advogado no chat, a que a resposta precisa atender.
+    mensagem: MaskedText | None = Field(default=None, max_length=4000)
 
 
 class CriterionAssessment(BaseModel):
@@ -172,6 +174,14 @@ class AnalysisDraft(BaseModel):
     melhorias: list[Improvement] = Field(max_length=12)
     casos_proximos: list[CaseComparison] = Field(max_length=5)
     riscos: list[str] = Field(max_length=8)
+    resposta: str = Field(
+        min_length=10,
+        max_length=1500,
+        description="Fala ao advogado: o que mudou e o próximo passo",
+    )
+    perguntas: list[str] = Field(
+        max_length=5, description="O que falta saber para fortalecer o caso, uma pergunta por item"
+    )
 
 
 class CaseMeasurement(BaseModel):

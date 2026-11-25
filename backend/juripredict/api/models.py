@@ -235,3 +235,119 @@ def _apagar_arquivo_do_storage(sender, instance, **kwargs):
 @receiver(post_delete, sender=Processo)
 def _apagar_peticao_do_storage(sender, instance, **kwargs):
     apagar_arquivo_depois_do_commit(instance.arquivo_peticao_inicial)
+
+
+class DecisaoTribunal(models.Model):
+    """Pedido julgado numa sentença pública do TRT-16, rotulado pelo pipeline.
+
+    Não é dado de escritório: a base é a mesma para todos e só muda pela importação
+    (`importar_decisoes_trt`). O trecho chega sem nome de parte (I6). Uma linha por
+    (processo, pedido), inclusive as que não entram na taxa, com o motivo (I1).
+    """
+
+    TEMAS = (
+        ("insalubridade", "Adicional de insalubridade"),
+        ("periculosidade", "Adicional de periculosidade"),
+    )
+
+    caso_id = models.CharField(max_length=40, unique=True)
+    numero_cnj = models.CharField(max_length=25)
+    tema = models.CharField(max_length=20, choices=TEMAS)
+    vara = models.CharField(max_length=200)
+    data_sentenca = models.DateField(null=True, blank=True)
+    # deferido | indeferido, ou a classe de escape (ambiguo, nao_analisado...)
+    resultado = models.CharField(max_length=20)
+    # modelo (entra na taxa) | escape | coletiva | fora_da_populacao
+    populacao = models.CharField(max_length=20)
+    motivo_fora = models.CharField(max_length=40, blank=True)
+    grau = models.PositiveSmallIntegerField(null=True, blank=True)
+    # como o rótulo foi lido: no dispositivo ou inferido (gold_set.mecanismo)
+    mecanismo = models.CharField(max_length=40)
+    trecho = models.TextField(blank=True)
+    versao = models.CharField(max_length=40)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=("tema", "populacao", "vara"), name="decisao_tema_pop_vara"),
+            models.Index(fields=("tema", "data_sentenca"), name="decisao_tema_data"),
+        ]
+
+    def __str__(self):
+        return f"{self.numero_cnj} {self.tema} {self.resultado}"
+
+
+class LoteDecisoesTribunal(models.Model):
+    """Cada importação da base do tribunal, com o que a valida.
+
+    `validacao`: {"gold_set": {"anotados", "concordancia_deferido",
+    "concordancia_indeferido"}, "cobertura": {"geral" | vara | "ano:AAAA": 0 a 100}}.
+    Sem ela, as taxas ficam suprimidas.
+    """
+
+    versao = models.CharField(max_length=40)
+    total = models.PositiveIntegerField()
+    validacao = models.JSONField(default=dict, blank=True)
+    importado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.versao} ({self.total})"
+
+
+class CasoEstudo(models.Model):
+    """Caso que o advogado estrutura conversando com o agente de IA. É do escritório."""
+
+    escritorio = models.ForeignKey(
+        "organizations.Escritorio", on_delete=models.CASCADE, related_name="casos_estudo"
+    )
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="casos_estudo",
+        null=True,
+        blank=True,
+    )
+    # vazio até a primeira análise, que sugere um título
+    titulo = models.CharField(max_length=120, blank=True)
+    tema = models.CharField(max_length=20, choices=DecisaoTribunal.TEMAS)
+    fase = models.CharField(max_length=30)
+    orgao_julgador = models.CharField(max_length=200, blank=True)
+    provas = models.JSONField(default=list, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-atualizado_em", "-id")
+
+    def __str__(self):
+        return self.titulo or f"Caso {self.pk}"
+
+
+class MensagemCaso(models.Model):
+    """Uma fala da conversa. A do agente guarda a análise completa e os índices dela."""
+
+    class Autor(models.TextChoices):
+        ADVOGADO = "advogado", "Advogado"
+        AGENTE = "agente", "Agente"
+
+    class Status(models.TextChoices):
+        PENDENTE = "pendente", "Pendente"
+        CONCLUIDA = "concluida", "Concluída"
+        ERRO = "erro", "Erro"
+
+    caso = models.ForeignKey(CasoEstudo, on_delete=models.CASCADE, related_name="mensagens")
+    autor = models.CharField(max_length=10, choices=Autor.choices)
+    texto = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.CONCLUIDA)
+    # só enquanto pendente; nunca sai na API
+    job_id = models.CharField(max_length=64, blank=True)
+    resultado = models.JSONField(null=True, blank=True)
+    erro = models.CharField(max_length=300, blank=True)
+    indice_atual = models.PositiveSmallIntegerField(null=True, blank=True)
+    indice_potencial = models.PositiveSmallIntegerField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("criado_em", "id")
+
+    def __str__(self):
+        return f"{self.caso_id} {self.autor} {self.status}"

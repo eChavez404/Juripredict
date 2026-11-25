@@ -18,9 +18,11 @@ from organizations.serializers import EscritorioResumoSerializer, MembroEscritor
 from .crypto_utils import decrypt_data, encrypt_data, hash_data
 from .models import (
     Andamento,
+    CasoEstudo,
     Cliente,
     DocumentoProcesso,
     EventoAgenda,
+    MensagemCaso,
     Processo,
     apagar_arquivo_depois_do_commit,
 )
@@ -241,19 +243,72 @@ class ProcessoResumoSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class AgenteCasoSerializer(serializers.Serializer):
-    """Só forma e tamanho: as opções válidas são do agente, que recusa o que não conhece."""
+class MensagemCasoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MensagemCaso
+        fields = (
+            "id", "autor", "texto", "status", "erro", "resultado",
+            "indice_atual", "indice_potencial", "criado_em",
+        )
+        read_only_fields = fields
 
-    tema = serializers.CharField(max_length=40)
-    fase = serializers.CharField(max_length=40)
+
+class CasoEstudoSerializer(serializers.ModelSerializer):
+    """O caso e a conversa. Ao criar, `relato` é a primeira mensagem do advogado."""
+
     relato = serializers.CharField(
-        min_length=40, max_length=12000, help_text="Sem nomes das partes. CPF e CNPJ são mascarados."
+        write_only=True, min_length=40, max_length=4000,
+        help_text="Sem nomes das partes. CPF, CNPJ, PIS, e-mail e telefone são mascarados no agente.",
     )
     provas = serializers.ListField(
         child=serializers.CharField(max_length=40), required=False, max_length=20
     )
-    orgao_julgador = serializers.CharField(max_length=200, required=False, allow_blank=True)
-    duvida = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    mensagens = MensagemCasoSerializer(many=True, read_only=True)
+    etapa = serializers.SerializerMethodField(help_text="Etapa do agente, enquanto há análise em andamento.")
+
+    class Meta:
+        model = CasoEstudo
+        fields = (
+            "id", "titulo", "tema", "fase", "orgao_julgador", "provas", "relato",
+            "mensagens", "etapa", "criado_em", "atualizado_em",
+        )
+        read_only_fields = ("id", "mensagens", "etapa", "criado_em", "atualizado_em")
+
+    def get_etapa(self, caso) -> str | None:
+        return self.context.get("etapa")
+
+    def validate_fase(self, valor):
+        if len(valor) > 30:
+            raise serializers.ValidationError("Fase inválida.")
+        return valor
+
+
+class CasoEstudoAtualizacaoSerializer(serializers.ModelSerializer):
+    """O que muda entre uma mensagem e outra: título, fase, órgão e provas."""
+
+    provas = serializers.ListField(child=serializers.CharField(max_length=40), max_length=20)
+
+    class Meta:
+        model = CasoEstudo
+        fields = ("titulo", "fase", "orgao_julgador", "provas")
+        extra_kwargs = {field: {"required": False} for field in fields}
+
+
+class CasoEstudoResumoSerializer(serializers.ModelSerializer):
+    indice_atual = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CasoEstudo
+        fields = ("id", "titulo", "tema", "fase", "indice_atual", "atualizado_em")
+        read_only_fields = fields
+
+    def get_indice_atual(self, caso) -> int | None:
+        ultima = caso.mensagens.filter(indice_atual__isnull=False).order_by("-criado_em", "-id").first()
+        return ultima.indice_atual if ultima else None
+
+
+class MensagemNovaSerializer(serializers.Serializer):
+    texto = serializers.CharField(min_length=2, max_length=4000)
 
 
 class PrazoParametrosSerializer(serializers.Serializer):

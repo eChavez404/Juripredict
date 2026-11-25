@@ -1,7 +1,8 @@
-import { useEffect, useState, type CSSProperties, type ElementType } from 'react';
+import { useEffect, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 import { BarChart3, Download, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, RadialBar, RadialBarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import ProtectedContent from '../components/auth/ProtectedContent';
+import JurimetriaTribunal from '../components/jurimetria/JurimetriaTribunal';
 import ProcessosDaTaxaModal from '../components/jurimetria/ProcessosDaTaxaModal';
 import ChartTooltip from '../components/ui/ChartTooltip';
 import Feedback from '../components/ui/Feedback';
@@ -36,7 +37,7 @@ const taxaDaLinha = (linha: LinhaComparacao) => (linha.favoravel === null || !li
   ? 'Sem taxa: amostra insuficiente'
   : `${linha.favoravel}% (de ${linha.intervalo_favoravel.min}% a ${linha.intervalo_favoravel.max}%)`);
 
-const JurimetriaConteudo = () => {
+const JurimetriaConteudo = ({ abas }: { abas: ReactNode }) => {
   const [data, setData] = useState<JurimetriaData | null>(null);
   const [error, setError] = useState('');
   const [area, setArea] = useState('');
@@ -64,8 +65,8 @@ const JurimetriaConteudo = () => {
     }
   };
 
-  if (error && !data) return <div className="page"><Feedback type="error">{error}</Feedback></div>;
-  if (!data) return <div className="page"><div className="panel empty-state">Calculando indicadores...</div></div>;
+  if (error && !data) return <div className="page">{abas}<Feedback type="error">{error}</Feedback></div>;
+  if (!data) return <div className="page">{abas}<div className="panel empty-state">Calculando indicadores...</div></div>;
 
   const rotuloTaxa = data.intervalo_favoravel
     ? `Favoráveis ou acordos · IC 95%: ${data.intervalo_favoravel.min}% a ${data.intervalo_favoravel.max}%`
@@ -117,11 +118,11 @@ const JurimetriaConteudo = () => {
 
   return (
     <div className="page">
+      {abas}
       <PageHeader
-        eyebrow="Inteligência jurídica"
-        title="Jurimetria estratégica"
+        eyebrow="Seu escritório"
+        title="Desempenho da carteira"
         description="Indicadores calculados a partir dos resultados cadastrados na sua própria carteira."
-        backTo="/"
         action={(
           <button className="button button--secondary" type="button" onClick={() => void exportar()} disabled={exportando}>
             <Download size={17} /> {exportando ? 'Gerando...' : 'Exportar CSV'}
@@ -218,9 +219,47 @@ const JurimetriaConteudo = () => {
   );
 };
 
+type Visao = 'tribunal' | 'escritorio';
+
+const VISOES: Array<[Visao, string]> = [['tribunal', 'TRT-16: decisões públicas'], ['escritorio', 'Seu escritório']];
+
+const Abas = ({ visao, onChange }: { visao: Visao; onChange: (visao: Visao) => void }) => (
+  <div className="view-toggle jurimetria-visoes" role="group" aria-label="Base da jurimetria">
+    {VISOES.map(([valor, rotulo]) => (
+      <button
+        key={valor}
+        type="button"
+        className={visao === valor ? 'view-toggle__button view-toggle__button--active' : 'view-toggle__button'}
+        aria-pressed={visao === valor}
+        onClick={() => onChange(valor)}
+      >
+        {rotulo}
+      </button>
+    ))}
+  </div>
+);
+
+const JurimetriaPaginas = () => {
+  const [visao, setVisao] = useState<Visao>('tribunal');
+  const abas = <Abas visao={visao} onChange={setVisao} />;
+  if (visao === 'escritorio') return <JurimetriaConteudo abas={abas} />;
+  return (
+    <div className="page">
+      {abas}
+      <PageHeader
+        eyebrow="Inteligência jurídica"
+        title="Jurimetria do TRT-16"
+        description="Como as varas do TRT da 16ª Região decidem o pedido, com as sentenças que sustentam cada número."
+        backTo="/"
+      />
+      <JurimetriaTribunal />
+    </div>
+  );
+};
+
 const Jurimetria = () => (
   <ProtectedContent capability={CAPABILITIES.jurimetriaVisualizar}>
-    <JurimetriaConteudo />
+    <JurimetriaPaginas />
   </ProtectedContent>
 );
 

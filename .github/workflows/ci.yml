@@ -76,7 +76,7 @@ jobs:
       - name: Verificar migrations pendentes
         run: python manage.py makemigrations --check --dry-run
       - name: Executar testes de negócio e segurança
-        run: python manage.py test api.tests api.test_key_rotation organizations auditlog accounts api.test_lembretes api.test_validators api.test_estatistica api.test_andamentos api.test_documentos api.test_papeis api.test_openapi api.test_regressoes api.test_prazos api.test_jurimetria_recortes api.test_agente --verbosity=2
+        run: python manage.py test api.tests api.test_key_rotation organizations auditlog accounts api.test_lembretes api.test_validators api.test_estatistica api.test_andamentos api.test_documentos api.test_papeis api.test_openapi api.test_regressoes api.test_prazos api.test_jurimetria_recortes api.test_agente api.test_jurimetria_tribunal --verbosity=2
       - name: Validar migração dos dados existentes
         run: python manage.py test api.test_migrations --verbosity=2
 

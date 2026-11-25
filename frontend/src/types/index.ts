@@ -175,15 +175,6 @@ export type AgenteOpcoes = {
   provas: AgenteOpcao[];
 };
 
-export type AgenteCaso = {
-  tema: string;
-  fase: string;
-  relato: string;
-  provas: string[];
-  orgao_julgador: string;
-  duvida: string;
-};
-
 export type AgenteSituacao = 'atendido' | 'parcial' | 'ausente' | 'nao_aplicavel';
 
 export type AgenteResultado = {
@@ -194,6 +185,8 @@ export type AgenteResultado = {
     melhorias: Array<{ criterio_id: string; acao: string; justificativa: string; caso_ids: string[] }>;
     casos_proximos: Array<{ caso_id: string; semelhancas: string; diferencas: string }>;
     riscos: string[];
+    resposta: string;
+    perguntas: string[];
   };
   catalogo: { versao: string; criterios: Array<{ id: string; nome: string; fundamentos: string[] }> };
   medicao: {
@@ -216,10 +209,84 @@ export type AgenteResultado = {
   disclaimer: string;
 };
 
-export type AgenteAnalise = {
-  id: string;
-  status: 'running' | 'done' | 'error';
-  step: string | null;
-  result: AgenteResultado | null;
-  error: string | null;
+export type AgenteCasoNovo = {
+  tema: string;
+  fase: string;
+  orgao_julgador: string;
+  provas: string[];
+  relato: string;
+};
+
+export type MensagemCaso = {
+  id: number;
+  autor: 'advogado' | 'agente';
+  texto: string;
+  status: 'pendente' | 'concluida' | 'erro';
+  erro: string;
+  resultado: AgenteResultado | null;
+  indice_atual: number | null;
+  indice_potencial: number | null;
+  criado_em: string;
+};
+
+export type CasoEstudo = {
+  id: number;
+  titulo: string;
+  tema: string;
+  fase: string;
+  orgao_julgador: string;
+  provas: string[];
+  mensagens: MensagemCaso[];
+  etapa: string | null;
+  criado_em: string;
+  atualizado_em: string;
+};
+
+export type CasoEstudoResumo = Pick<CasoEstudo, 'id' | 'titulo' | 'tema' | 'fase' | 'atualizado_em'> & {
+  indice_atual: number | null;
+};
+
+// Jurimetria do tribunal: sentenças públicas do TRT-16 (backend/juripredict/api/jurimetria_tribunal.py).
+export type ResultadoTribunal = 'deferido' | 'indeferido';
+
+export type TaxaTribunal = {
+  total: number;
+  suficiente: boolean;
+  favoravel: number | null;
+  desfavoravel: number | null;
+  intervalo_favoravel: IntervaloPercentual | null;
+  motivo: string | null;
+  cobertura: number | null;
+};
+
+export type JurimetriaTribunalDisponivel = {
+  disponivel: true;
+  filtros: { tema: string; vara?: string; ano?: number };
+  geral: TaxaTribunal;
+  fora_da_taxa: Array<{ motivo: string; total: number }>;
+  por_vara: Array<TaxaTribunal & { vara: string }>;
+  por_ano: Array<TaxaTribunal & { ano: number }>;
+  validacao: { rotulo_conferido: boolean; motivo: string | null; gold_set: Record<string, number> | null; cobertura_medida: boolean };
+  opcoes: { temas: Array<{ valor: string; rotulo: string }>; varas: string[]; anos: number[] };
+  fonte: { origem: string; inicio: string | null; fim: string | null; versao: string; importado_em: string };
+  populacao: string;
+  criterio: string;
+  piso_amostra: number;
+};
+
+export type JurimetriaTribunal = JurimetriaTribunalDisponivel | { disponivel: false };
+
+export type DecisoesTribunal = {
+  total: number;
+  exibidos: number;
+  contagem: Partial<Record<ResultadoTribunal, number>>;
+  decisoes: Array<{
+    numero_cnj: string;
+    vara: string;
+    data_sentenca: string | null;
+    resultado: ResultadoTribunal;
+    grau: number | null;
+    mecanismo: string;
+    trecho: string;
+  }>;
 };

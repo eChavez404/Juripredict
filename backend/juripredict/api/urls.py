@@ -5,10 +5,9 @@ from auditlog.views import EventoAuditoriaViewSet
 from organizations.views import EscritorioViewSet
 
 from .views import (
-    AgenteAnaliseAPIView,
-    AgenteAnalisesAPIView,
     AgenteOpcoesAPIView,
     AlterarSenhaAPIView,
+    CasoEstudoViewSet,
     ClienteViewSet,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
@@ -17,6 +16,8 @@ from .views import (
     JurimetriaAPIView,
     JurimetriaExportarAPIView,
     JurimetriaProcessosAPIView,
+    JurimetriaTribunalAPIView,
+    JurimetriaTribunalDecisoesAPIView,
     PendenciasAPIView,
     PrazoCalculoAPIView,
     ProcessoViewSet,
@@ -30,6 +31,7 @@ router.register("processos", ProcessoViewSet, basename="processo")
 router.register("eventos", EventoAgendaViewSet, basename="evento")
 router.register("escritorios", EscritorioViewSet, basename="escritorio")
 router.register("auditoria", EventoAuditoriaViewSet, basename="auditoria")
+router.register("agente/casos", CasoEstudoViewSet, basename="caso-estudo")
 
 
 urlpatterns = [
@@ -41,11 +43,15 @@ urlpatterns = [
     path("jurimetria/", JurimetriaAPIView.as_view(), name="jurimetria"),
     path("jurimetria/processos/", JurimetriaProcessosAPIView.as_view(), name="jurimetria-processos"),
     path("jurimetria/exportar/", JurimetriaExportarAPIView.as_view(), name="jurimetria-exportar"),
+    path("jurimetria/tribunal/", JurimetriaTribunalAPIView.as_view(), name="jurimetria-tribunal"),
+    path(
+        "jurimetria/tribunal/decisoes/",
+        JurimetriaTribunalDecisoesAPIView.as_view(),
+        name="jurimetria-tribunal-decisoes",
+    ),
     path("pendencias/", PendenciasAPIView.as_view(), name="pendencias"),
     path("prazos/calcular/", PrazoCalculoAPIView.as_view(), name="prazo-calcular"),
     path("agente/opcoes/", AgenteOpcoesAPIView.as_view(), name="agente-opcoes"),
-    path("agente/analises/", AgenteAnalisesAPIView.as_view(), name="agente-analises"),
-    path("agente/analises/<str:analise_id>/", AgenteAnaliseAPIView.as_view(), name="agente-analise"),
     path("", include("organizations.urls")),
     path("", include(router.urls)),
 ]

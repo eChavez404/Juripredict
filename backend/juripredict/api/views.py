@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Count, ProtectedError, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -22,13 +23,14 @@ from accounts.tokens_api import revogar_tokens_api
 from auditlog.mixins import AuditoriaCrudMixin
 from auditlog.services import registrar_evento_auditoria
 from config.openapi import (
-    AgenteAnaliseRespostaSerializer,
     AgenteOpcoesRespostaSerializer,
     AndamentosRespostaSerializer,
     DashboardRespostaSerializer,
     DetalheSerializer,
     JurimetriaProcessosRespostaSerializer,
     JurimetriaRespostaSerializer,
+    JurimetriaTribunalDecisoesRespostaSerializer,
+    JurimetriaTribunalRespostaSerializer,
     PendenciasRespostaSerializer,
     PrazoCalculoRespostaSerializer,
     SessaoSerializer,
@@ -37,10 +39,11 @@ from config.openapi import (
 from organizations.context import EscritorioContextMixin
 from organizations.permissions import TemContextoEscritorio, exige_capability
 
-from . import agente
+from . import agente, estudo_caso
 from .andamentos import sincronizar_processo
 from .documentos import anexar_documento, remover_documento
 from .datajud import DatajudErro
+from . import jurimetria_tribunal
 from .jurimetria import (
     RESULTADOS_CONCLUIDOS,
     analisar,
@@ -52,10 +55,21 @@ from .jurimetria import (
     opcoes_de_filtro,
     resposta_publica,
 )
-from .models import Andamento, Cliente, DocumentoProcesso, EventoAgenda, Processo
+from .models import (
+    Andamento,
+    CasoEstudo,
+    Cliente,
+    DecisaoTribunal,
+    DocumentoProcesso,
+    EventoAgenda,
+    Processo,
+)
 from .prazos import calcular_prazo
 from .serializers import (
-    AgenteCasoSerializer,
+    CasoEstudoAtualizacaoSerializer,
+    CasoEstudoResumoSerializer,
+    CasoEstudoSerializer,
+    MensagemNovaSerializer,
     AlterarSenhaSerializer,
     AndamentoRecenteSerializer,
     AndamentoSerializer,
@@ -534,6 +548,39 @@ class JurimetriaExportarAPIView(EscritorioContextMixin, APIView):
         return resposta
 
 
+FILTROS_TRIBUNAL = [
+    OpenApiParameter("tema", str, enum=[valor for valor, _ in DecisaoTribunal.TEMAS]),
+    OpenApiParameter("vara", str, description="Vara exatamente como consta nas sentenças."),
+    OpenApiParameter("ano", int, description="Ano da sentença."),
+]
+
+
+class JurimetriaTribunalAPIView(APIView):
+    """Taxa de deferimento do pedido nas sentenças públicas do TRT-16, com o que a sustenta."""
+
+    permission_classes = [IsAuthenticated, TemContextoEscritorio, exige_capability("jurimetria.ler")]
+
+    @extend_schema(parameters=FILTROS_TRIBUNAL, responses=JurimetriaTribunalRespostaSerializer)
+    def get(self, request):
+        filtros = jurimetria_tribunal.filtros_da_requisicao(request.query_params)
+        return Response(jurimetria_tribunal.analisar(filtros))
+
+
+class JurimetriaTribunalDecisoesAPIView(APIView):
+    """As decisões por trás do número, com o trecho do dispositivo e como ele foi lido."""
+
+    permission_classes = [IsAuthenticated, TemContextoEscritorio, exige_capability("jurimetria.ler")]
+
+    @extend_schema(
+        parameters=FILTROS_TRIBUNAL
+        + [OpenApiParameter("resultado", str, enum=list(jurimetria_tribunal.RESULTADOS))],
+        responses=JurimetriaTribunalDecisoesRespostaSerializer,
+    )
+    def get(self, request):
+        filtros = jurimetria_tribunal.filtros_da_requisicao(request.query_params, com_resultado=True)
+        return Response(jurimetria_tribunal.decisoes_do_recorte(filtros))
+
+
 class PrazoCalculoAPIView(APIView):
     """Só calcula: não lê nem grava dado de escritório. Quem grava é a criação do compromisso."""
 
@@ -607,48 +654,80 @@ class AgenteOpcoesAPIView(APIView):
         return Response(agente.opcoes())
 
 
-class AgenteAnalisesAPIView(EscritorioContextMixin, APIView):
-    """Começa uma análise. O caso não é gravado aqui; a auditoria guarda só tema e fase."""
+@extend_schema_view(
+    list=extend_schema(responses=CasoEstudoResumoSerializer(many=True)),
+    partial_update=extend_schema(request=CasoEstudoAtualizacaoSerializer, responses=CasoEstudoSerializer),
+)
+class CasoEstudoViewSet(EscritorioContextMixin, viewsets.ModelViewSet):
+    """Casos que o escritório estrutura com o agente. Cada mensagem refaz a análise do caso inteiro."""
 
     permission_classes = PERMISSOES_AGENTE
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "agente"
+    serializer_class = CasoEstudoSerializer
+    http_method_names = ["get", "post", "patch", "delete"]
+    # o DRF só aceita `throttle_scope` por action se a classe o declarar
+    throttle_scope = None
 
-    @extend_schema(
-        request=AgenteCasoSerializer,
-        responses={
-            202: AgenteAnaliseRespostaSerializer,
-            400: DetalheSerializer,
-            503: DetalheSerializer,
-        },
-    )
-    def post(self, request):
-        caso = AgenteCasoSerializer(data=request.data)
-        caso.is_valid(raise_exception=True)
-        job_id, analise = agente.iniciar(caso.validated_data)
-        escritorio = self.get_escritorio()
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return CasoEstudo.objects.none()
+        return CasoEstudo.objects.filter(escritorio=self.get_escritorio()).prefetch_related("mensagens")
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return CasoEstudoResumoSerializer
+        if self.action == "partial_update":
+            return CasoEstudoAtualizacaoSerializer
+        return CasoEstudoSerializer
+
+    def get_throttles(self):
+        # cada criação e cada mensagem é uma chamada paga ao modelo
+        if self.action in ("create", "mensagens"):
+            self.throttle_scope = "agente"
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
+    def _detalhe(self, caso, status_http=status.HTTP_200_OK):
+        etapa = estudo_caso.atualizar_pendente(caso)
+        caso = self.get_queryset().get(pk=caso.pk)
+        return Response(CasoEstudoSerializer(caso, context={"etapa": etapa}).data, status=status_http)
+
+    def retrieve(self, request, *args, **kwargs):
+        return self._detalhe(self.get_object())
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        dados = dict(serializer.validated_data)
+        relato = dados.pop("relato")
+        with transaction.atomic():
+            caso = CasoEstudo.objects.create(escritorio=self.get_escritorio(), criado_por=request.user, **dados)
+            estudo_caso.enviar(caso, relato, request.user, primeira=True)
+        return self._detalhe(caso, status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        caso = self.get_object()
+        serializer = CasoEstudoAtualizacaoSerializer(caso, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return self._detalhe(caso)
+
+    @transaction.atomic
+    def perform_destroy(self, caso):
+        escritorio, recurso_id = caso.escritorio, caso.pk
+        caso.delete()
         registrar_evento_auditoria(
             escritorio=escritorio,
-            ator=request.user,
-            acao="agente.analise_iniciada",
-            recurso_tipo="agente",
-            recurso_id=job_id,
-            alteracoes={campo: caso.validated_data[campo] for campo in ("tema", "fase")},
+            ator=self.request.user,
+            acao="agente.caso_excluido",
+            recurso_tipo="caso_estudo",
+            recurso_id=recurso_id,
         )
-        analise_id = agente.assinar(job_id, escritorio, request.user)
-        return Response({"id": analise_id, **analise}, status=status.HTTP_202_ACCEPTED)
 
-
-class AgenteAnaliseAPIView(EscritorioContextMixin, APIView):
-    permission_classes = PERMISSOES_AGENTE
-
-    @extend_schema(
-        responses={
-            200: AgenteAnaliseRespostaSerializer,
-            404: DetalheSerializer,
-            503: DetalheSerializer,
-        }
-    )
-    def get(self, request, analise_id):
-        job_id = agente.conferir(analise_id, self.get_escritorio(), request.user)
-        return Response({"id": analise_id, **agente.consultar(job_id)})
+    @extend_schema(request=MensagemNovaSerializer, responses={201: CasoEstudoSerializer, 400: DetalheSerializer})
+    @action(detail=True, methods=["post"])
+    def mensagens(self, request, pk=None):
+        caso = self.get_object()
+        mensagem = MensagemNovaSerializer(data=request.data)
+        mensagem.is_valid(raise_exception=True)
+        estudo_caso.enviar(caso, mensagem.validated_data["texto"], request.user)
+        return self._detalhe(caso, status.HTTP_201_CREATED)

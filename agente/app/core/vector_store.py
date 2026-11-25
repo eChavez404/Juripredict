@@ -26,6 +26,7 @@ EMBEDDING_TIMEOUT_MS = 30_000
 PINECONE_TIMEOUT_SECONDS = 5
 # Um documento vira vários trechos: busca mais trechos do que casos e fica com o melhor de cada.
 CHUNKS_PER_CASE = 4
+RESULTADOS = ("deferido", "indeferido")
 
 
 class VectorStoreError(RuntimeError):
@@ -83,24 +84,35 @@ def embed_query(text: str) -> list[float]:
 
 
 def search_cases(query: str, tema: str, limit: int) -> list[RetrievedCase]:
-    """Os `limit` documentos mais próximos do tema, do mais ao menos parecido."""
+    """Os casos mais parecidos do tema, metade deferidos e metade indeferidos.
+
+    Separado por resultado de propósito: só os mais parecidos poderiam vir todos de um lado, e o
+    advogado precisa ver o que deu certo e o que deu errado em casos como o dele.
+    """
     require_google_key()
+    por_lado = -(-limit // 2)
     try:
-        response = _index().query(
-            vector=embed_query(query),
-            top_k=limit * CHUNKS_PER_CASE,
-            namespace=PINECONE_NAMESPACE,
-            filter={"temas": {"$in": [tema]}},
-            include_metadata=True,
-        )
-        # Registro fora do contrato é defeito da indexação: falha alto em vez de sumir.
-        chunks = [
-            RetrievedCase.model_validate({**(match.metadata or {}), "similaridade": match.score})
-            for match in response.matches
-        ]
+        vetor = embed_query(query)
+        chunks = []
+        for resultado in RESULTADOS:
+            response = _index().query(
+                vector=vetor,
+                top_k=por_lado * CHUNKS_PER_CASE,
+                namespace=PINECONE_NAMESPACE,
+                filter={"temas": {"$in": [tema]}, "resultado": resultado},
+                include_metadata=True,
+            )
+            # Registro fora do contrato é defeito da indexação: falha alto em vez de sumir.
+            lado = [
+                RetrievedCase.model_validate(
+                    {**(match.metadata or {}), "similaridade": match.score}
+                )
+                for match in response.matches
+            ]
+            melhores: dict[str, RetrievedCase] = {}
+            for chunk in lado:  # já vêm ordenados por similaridade
+                melhores.setdefault(chunk.id_sentenca, chunk)
+            chunks += list(melhores.values())[:por_lado]
     except Exception as exc:
         raise VectorStoreError("A busca na base de casos falhou.") from exc
-    best: dict[str, RetrievedCase] = {}
-    for chunk in chunks:  # já vêm ordenados por similaridade
-        best.setdefault(chunk.id_sentenca, chunk)
-    return list(best.values())[:limit]
+    return sorted(chunks, key=lambda caso: -caso.similaridade)
