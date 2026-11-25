@@ -119,8 +119,6 @@ jobs:
         run: uv run ruff check . && uv run ruff format --check .
       - name: Executar testes
         run: uv run pytest -q
-      - name: Construir imagem
-        run: docker build --tag juripredict-agente:ci .
 
   frontend:
     name: Frontend · React
@@ -153,3 +151,5 @@ jobs:
       - uses: actions/checkout@v7
       - name: Construir imagem completa
         run: docker build --tag juripredict:ci .
+      - name: Conferir o agente dentro da imagem
+        run: docker run --rm --workdir /srv/agente --env LLM_MODEL=x:y juripredict:ci .venv/bin/python -c "import app.main"

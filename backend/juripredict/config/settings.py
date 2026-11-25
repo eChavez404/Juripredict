@@ -263,7 +263,8 @@ OAUTH_SEGREDO_INTROSPECCAO = os.getenv("OAUTH_SEGREDO_INTROSPECCAO", "")
 OAUTH_ACESSO_SEGUNDOS = int(os.getenv("OAUTH_ACESSO_SEGUNDOS", "3600"))
 OAUTH_RENOVACAO_DIAS = int(os.getenv("OAUTH_RENOVACAO_DIAS", "30"))
 OAUTH_CODIGO_SEGUNDOS = 600
-# Agente de IA (pasta agente/ na raiz): serviço interno, que só aceita quem tem o segredo.
+# Agente de IA (pasta agente/ na raiz): processo interno, que só aceita quem tem o segredo.
+# Na imagem de produção, o iniciar.sh define os dois; em desenvolvimento, o .env.
 # Sem a URL e o segredo, a análise fica desligada (503).
 AGENTE_URL = os.getenv("AGENTE_URL", "").strip().rstrip("/")
 AGENTE_SEGREDO = os.getenv("AGENTE_SEGREDO", "").strip()
