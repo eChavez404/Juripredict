@@ -15,8 +15,7 @@ from rest_framework.exceptions import APIException, NotFound
 
 # Abaixo dos 15 s do frontend. O agente responde na hora: a análise corre depois, por consulta.
 TIMEOUT_SEGUNDOS = 10
-# As opções são a chamada que acorda o agente hibernado. Curta, para não prender um worker
-# do gunicorn durante a espera: quem insiste é a página.
+# Curta, para não prender um worker do gunicorn enquanto o agente liga: quem insiste é a página.
 TIMEOUT_OPCOES_SEGUNDOS = 3
 SAL = "agente.analise"
 # Os resultados ficam na memória do agente; um dia depois não há o que consultar.
@@ -59,7 +58,7 @@ def _chamar(caminho, corpo=None, timeout=TIMEOUT_SEGUNDOS):
             raise CasoRecusado from None
         if exc.code == 404 and caminho.startswith("analyses/"):
             raise NotFound(NAO_ENCONTRADA) from None
-        # Segredo diferente nos dois lados, ou endereço sem serviço: esperar não resolve.
+        # Segredo diferente nos dois lados, ou endereço errado: esperar não resolve.
         if exc.code in (401, 404):
             raise AgenteNaoConfigurado from None
         raise AgenteIndisponivel from None

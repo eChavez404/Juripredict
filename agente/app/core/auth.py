@@ -9,7 +9,7 @@ from app.core.config import AGENTE_SEGREDO
 
 
 class RequireBackend:
-    """Confere o segredo antes de ler o corpo, porque a URL é pública no Render.
+    """Confere o segredo antes de ler o corpo da requisição.
 
     ASGI puro, e não uma dependência do FastAPI: a dependência só roda com o corpo já lido.
     Tudo é negado por padrão, menos o `/health`; sem segredo configurado, nada entra.

@@ -152,9 +152,10 @@ As regras do estagiário são um padrão conservador: para mudar, edite a tabela
 ## Agente de IA
 
 O serviço fica em `agente/` e não tem tela nem login: o navegador fala só com o backend, que
-confere login, papel e limite e chama o agente com `AGENTE_URL` e `AGENTE_SEGREDO`. Sem os dois,
-ou com o segredo diferente, as rotas respondem 503; com o agente sem resposta (hibernado, por
-exemplo), 502, e a página insiste. O caso não é gravado no banco, e o `id` da análise é assinado com o
+confere login, papel e limite e chama o agente com `AGENTE_URL` e `AGENTE_SEGREDO`. Em produção,
+o agente roda no mesmo contêiner e o `iniciar.sh` define os dois; em desenvolvimento, o `.env`. Sem os dois,
+ou com o segredo diferente, as rotas respondem 503; com o agente sem resposta (ainda
+ligando, por exemplo), 502, e a página insiste. O caso não é gravado no banco, e o `id` da análise é assinado com o
 escritório e o usuário, para que ninguém mais consulte o resultado.
 
 ## Tokens de API e auditoria de agentes
@@ -197,6 +198,15 @@ escritório e trocar a senha também cortam o acesso. Na auditoria: `oauth.conex
 | `OAUTH_RECURSOS` | URLs dos servidores MCP que aceitam os tokens (RFC 8707). Vazia, o conector fica desligado |
 | `OAUTH_SEGREDO_INTROSPECCAO` | segredo que o serviço MCP usa para perguntar se um token vale |
 | `OAUTH_EMISSOR` | URL pública do app; padrão `FRONTEND_URL` |
+
+Na imagem de produção, o `iniciar.sh` define as três: o recurso é a `FRONTEND_URL` + `/mcp`, e o
+segredo é novo a cada partida.
+
+## Um contêiner só
+
+A imagem da raiz sobe quatro processos: o nginx na porta pública (`nginx.conf`), o site no
+gunicorn, o agente de IA e o servidor MCP, estes três só em `127.0.0.1`. O `iniciar.sh` liga os
+outros depois do site, com `env -i`, e o `manter.sh` reinicia o que cair.
 
 ## Documentos do processo
 

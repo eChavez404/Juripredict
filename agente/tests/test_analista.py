@@ -287,7 +287,7 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(TestClient(app).get("/health").status_code, 200)
 
     def test_body_is_not_read_before_the_credential(self):
-        # A URL é pública no Render: JSON quebrado sem credencial daria 422 se fosse lido.
+        # JSON quebrado sem credencial daria 422 se fosse lido.
         json_header = {"Content-Type": "application/json"}
         response = TestClient(app).post("/api/v1/analyses", content=b"{", headers=json_header)
         self.assertEqual(response.status_code, 401)

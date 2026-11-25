@@ -38,19 +38,21 @@ services:
         value: https://juripredict.onrender.com
       - key: CORS_ALLOW_ALL_ORIGINS
         value: "false"
-      # Conector MCP remoto (accounts/oauth.py): o servidor MCP que aceita os tokens e o
-      # segredo com que ele pergunta se um token vale. O mesmo segredo vai para o
-      # juripredict-mcp, abaixo.
-      - key: OAUTH_RECURSOS
-        value: https://juripredict-mcp.onrender.com/mcp
-      - key: OAUTH_SEGREDO_INTROSPECCAO
-        generateValue: true
-      # Agente de IA (agente/): o endereço do juripredict-agente, abaixo, e o segredo que ele
-      # exige. O serviço gratuito não recebe tráfego da rede privada, daí a URL pública.
-      - key: AGENTE_URL
-        value: https://juripredict-agente.onrender.com
-      - key: AGENTE_SEGREDO
-        generateValue: true
+      # O agente de IA (agente/) e o servidor MCP (mcp_server/) rodam neste mesmo serviço, que
+      # gera os próprios segredos (backend/iniciar.sh). O conector MCP é a FRONTEND_URL + /mcp.
+      # Sem a GOOGLE_API_KEY, a análise avisa que a IA não está configurada.
+      - key: GOOGLE_API_KEY
+        sync: false
+      # Sem chave e índice, o agente responde só pelos critérios e avisa.
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX
+        sync: false
+      # Sem as duas chaves, nada é enviado ao Langfuse.
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
       - key: DB_CONN_MAX_AGE
         value: "60"
       - key: USE_R2_STORAGE
@@ -93,73 +95,6 @@ services:
 
   # Tarefas agendadas. Cron Job do Render não existe no plano gratuito (mínimo: starter).
   # Reaproveitam do web os segredos que ele já guarda.
-
-  # Conector MCP remoto: o advogado cola esta URL no Claude (ou o agente do JuriPredict
-  # se conecta) e autoriza na tela /autorizar do app. Ver mcp_server/README.md.
-  - type: web
-    name: juripredict-mcp
-    runtime: docker
-    plan: free
-    region: virginia
-    branch: develop
-    dockerfilePath: ./mcp_server/Dockerfile
-    dockerContext: ./mcp_server
-    healthCheckPath: /.well-known/oauth-protected-resource/mcp
-    autoDeployTrigger: commit
-    envVars:
-      - key: JURIPREDICT_MCP_URL
-        value: https://juripredict-mcp.onrender.com/mcp
-      - key: JURIPREDICT_API_URL
-        value: https://juripredict.onrender.com/api/v1
-      - key: JURIPREDICT_EMISSOR
-        value: https://juripredict.onrender.com
-      - key: JURIPREDICT_SEGREDO_INTROSPECCAO
-        fromService:
-          type: web
-          name: juripredict
-          envVarKey: OAUTH_SEGREDO_INTROSPECCAO
-
-  # Agente de IA: sem tela, só o backend o chama, com o AGENTE_SEGREDO. As chaves ficam no
-  # painel (Environment); sem a GOOGLE_API_KEY, a análise avisa que a IA não está configurada.
-  - type: web
-    name: juripredict-agente
-    runtime: docker
-    plan: free
-    region: virginia
-    branch: develop
-    dockerfilePath: ./agente/Dockerfile
-    dockerContext: ./agente
-    healthCheckPath: /health
-    autoDeployTrigger: commit
-    envVars:
-      - key: AGENTE_SEGREDO
-        fromService:
-          type: web
-          name: juripredict
-          envVarKey: AGENTE_SEGREDO
-      - key: LLM_MODEL
-        value: google_genai:gemini-3.8-flash
-      - key: EMBEDDING_MODEL
-        value: gemini-embedding-2
-      - key: EMBEDDING_DIMENSIONS
-        value: "768"
-      - key: LANGFUSE_BASE_URL
-        value: https://us.cloud.langfuse.com
-      - key: GOOGLE_API_KEY
-        sync: false
-      # Sem chave e índice, o agente responde só pelos critérios e avisa.
-      - key: PINECONE_API_KEY
-        sync: false
-      - key: PINECONE_INDEX
-        sync: false
-      - key: PINECONE_NAMESPACE
-        sync: false
-      # Sem as duas chaves, nada é enviado ao Langfuse.
-      - key: LANGFUSE_PUBLIC_KEY
-        sync: false
-      - key: LANGFUSE_SECRET_KEY
-        sync: false
-
   - type: cron
     name: juripredict-lembretes
     runtime: docker
