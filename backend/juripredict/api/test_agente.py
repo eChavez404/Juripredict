@@ -61,6 +61,15 @@ class AcessoTests(AgenteBase):
 
         self.assertEqual(resposta.data, opcoes)
 
+    def test_opcoes_desistem_rapido_para_nao_prender_o_backend_enquanto_o_agente_acorda(self):
+        self.como(PAPEL.ADVOGADO).get("/api/v1/agente/opcoes/")
+        self.assertLessEqual(self.abrir.call_args.kwargs["timeout"], 3)
+
+    def test_pagina_de_espera_do_render_vira_indisponivel(self):
+        self.abrir.side_effect = lambda *_a, **_k: BytesIO(b"<html>loading</html>")
+        resposta = self.como(PAPEL.ADVOGADO).get("/api/v1/agente/opcoes/")
+        self.assertEqual(resposta.status_code, 502)
+
     def test_sem_url_ou_sem_segredo_fica_desligado(self):
         for vazio in ("AGENTE_URL", "AGENTE_SEGREDO"):
             with self.subTest(vazio), override_settings(**{vazio: ""}):
@@ -100,7 +109,9 @@ class InicioTests(AgenteBase):
     def test_falhas_do_agente_nao_vazam_detalhe_nem_endereco(self):
         casos = (
             (falha_http(422), 400),
-            (falha_http(401), 502),
+            (falha_http(401), 503),  # segredo diferente nos dois lados: esperar não resolve
+            (falha_http(404), 503),  # endereço sem serviço, como no Render antes de criá-lo
+            (falha_http(502), 502),
             (falha_http(503), 502),
             (URLError("agente.interno recusou"), 502),
             (TimeoutError("agente.interno"), 502),

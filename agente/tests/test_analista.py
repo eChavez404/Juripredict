@@ -271,7 +271,10 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(body["fases"][0], {"value": "pre_processual", "label": "Antes de ajuizar"})
 
     def test_there_is_no_screen(self):
-        self.assertEqual(self.client.get("/").status_code, 404)
+        for path in ("/", "/docs", "/redoc", "/openapi.json"):
+            with self.subTest(path):
+                self.assertEqual(self.client.get(path).status_code, 404)
+                self.assertEqual(TestClient(app).get(path).status_code, 401)
 
     def test_only_the_backend_gets_in(self):
         for credential in ("", "Bearer errado", "segredo-de-teste"):
@@ -283,8 +286,14 @@ class EndpointTests(unittest.TestCase):
                 self.assertEqual(anonymous.post("/api/v1/analyses", json={}).status_code, 401)
         self.assertEqual(TestClient(app).get("/health").status_code, 200)
 
+    def test_body_is_not_read_before_the_credential(self):
+        # A URL é pública no Render: JSON quebrado sem credencial daria 422 se fosse lido.
+        json_header = {"Content-Type": "application/json"}
+        response = TestClient(app).post("/api/v1/analyses", content=b"{", headers=json_header)
+        self.assertEqual(response.status_code, 401)
+
     def test_without_configured_secret_everything_is_refused(self):
-        with patch("app.api.v1.router.AGENTE_SEGREDO", ""):
+        with patch("app.core.auth.AGENTE_SEGREDO", ""):
             for headers in ({}, {"Authorization": "Bearer "}):
                 response = TestClient(app, headers=headers).get("/api/v1/options")
                 self.assertEqual(response.status_code, 503)

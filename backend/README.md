@@ -153,7 +153,8 @@ As regras do estagiário são um padrão conservador: para mudar, edite a tabela
 
 O serviço fica em `agente/` e não tem tela nem login: o navegador fala só com o backend, que
 confere login, papel e limite e chama o agente com `AGENTE_URL` e `AGENTE_SEGREDO`. Sem os dois,
-as rotas respondem 503. O caso não é gravado no banco, e o `id` da análise é assinado com o
+ou com o segredo diferente, as rotas respondem 503; com o agente sem resposta (hibernado, por
+exemplo), 502, e a página insiste. O caso não é gravado no banco, e o `id` da análise é assinado com o
 escritório e o usuário, para que ninguém mais consulte o resultado.
 
 ## Tokens de API e auditoria de agentes

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import axios from 'axios';
 import { ArrowUpRight, Gauge, Scale, TrendingUp } from 'lucide-react';
 import ProtectedContent from '../components/auth/ProtectedContent';
 import Feedback from '../components/ui/Feedback';
@@ -14,7 +15,13 @@ const INTERVALO_MS = 2000;
 // Acima do pior caso do agente: busca na base mais duas tentativas do modelo.
 const LIMITE_MS = 6 * 60 * 1000;
 
+// Hospedado no plano gratuito, o agente hiberna sem uso e leva cerca de um minuto para voltar.
+const ESPERA_AGENTE_MS = 2 * 60 * 1000;
+const NOVA_TENTATIVA_MS = 5000;
+const LIGANDO = 'Ligando o agente. Pode levar até dois minutos...';
+
 const ETAPAS: Record<string, string> = {
+  ligando: LIGANDO,
   prepare_context: 'Separando os critérios do tema...',
   retrieve_cases: 'Procurando decisões parecidas na base...',
   analyze_case: 'Analisando o caso. Pode levar mais de um minuto...',
@@ -33,6 +40,22 @@ const CASO_VAZIO: AgenteCaso = {
 };
 
 const esperar = (ms: number) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+// Insiste enquanto o backend responde 502 (agente sem resposta). Só para leituras: repetir o
+// envio do caso poderia pagar duas análises.
+const insistir = async <T,>(leitura: () => Promise<T>, continuar: () => boolean, aoEsperar?: () => void): Promise<T> => {
+  const limite = Date.now() + ESPERA_AGENTE_MS;
+  for (;;) {
+    try {
+      return await leitura();
+    } catch (requestError) {
+      const semResposta = axios.isAxiosError(requestError) && requestError.response?.status === 502;
+      if (!semResposta || Date.now() > limite || !continuar()) throw requestError;
+      aoEsperar?.();
+      await esperar(NOVA_TENTATIVA_MS);
+    }
+  }
+};
 
 const Lista = ({ titulo, itens }: { titulo: string; itens: string[] }) => (itens.length ? (
   <article className="panel panel--padded">
@@ -144,20 +167,25 @@ const AgenteConteudo = () => {
   const [etapa, setEtapa] = useState('');
   const [resultado, setResultado] = useState<AgenteResultado | null>(null);
   const [erro, setErro] = useState('');
+  const [ligando, setLigando] = useState(false);
   const ativo = useRef(true);
 
   useEffect(() => {
+    // Próprio deste efeito: o ref volta a valer na remontagem e duas esperas correriam juntas.
+    let montado = true;
     ativo.current = true;
-    agenteService.opcoes()
+    const avisar = () => { if (montado) setLigando(true); };
+    insistir(agenteService.opcoes, () => montado, avisar)
       .then((resposta) => {
-        if (!ativo.current) return;
+        if (!montado) return;
         setOpcoes(resposta);
         setCaso((atual) => ({
           ...atual, tema: resposta.temas[0]?.value ?? '', fase: resposta.fases[0]?.value ?? '',
         }));
       })
-      .catch((requestError) => { if (ativo.current) setErro(getApiError(requestError)); });
-    return () => { ativo.current = false; };
+      .catch((requestError) => { if (montado) setErro(getApiError(requestError)); })
+      .finally(() => { if (montado) setLigando(false); });
+    return () => { montado = false; ativo.current = false; };
   }, []);
 
   const mudar = (campos: Partial<AgenteCaso>) => setCaso((atual) => ({ ...atual, ...campos }));
@@ -173,14 +201,21 @@ const AgenteConteudo = () => {
     setErro('');
     setResultado(null);
     setEtapa('prepare_context');
+    const continuar = () => ativo.current;
     try {
+      // Escrever o relato pode levar mais que os 15 minutos até a hibernação: acorda antes de enviar.
+      await insistir(agenteService.opcoes, continuar, () => { if (ativo.current) setEtapa('ligando'); });
+      if (!ativo.current) return;
+      setEtapa('prepare_context');
       const limite = Date.now() + LIMITE_MS;
       let analise = await agenteService.iniciar(caso);
       while (ativo.current && analise.status === 'running') {
         if (Date.now() > limite) throw new Error('tempo esgotado');
         setEtapa(analise.step ?? 'prepare_context');
         await esperar(INTERVALO_MS);
-        if (ativo.current) analise = await agenteService.consultar(analise.id);
+        if (!ativo.current) return;
+        const { id } = analise;
+        analise = await insistir(() => agenteService.consultar(id), continuar);
       }
       if (!ativo.current) return;
       if (analise.status === 'done' && analise.result) setResultado(analise.result);
@@ -208,6 +243,7 @@ const AgenteConteudo = () => {
       />
 
       {erro && <Feedback type="error">{erro}</Feedback>}
+      {ligando && <Feedback type="info">{LIGANDO}</Feedback>}
 
       {opcoes && (
         <form className="panel panel--padded entity-form" onSubmit={(event) => void analisar(event)}>
