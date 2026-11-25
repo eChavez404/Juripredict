@@ -25,7 +25,7 @@ CORRECTION_PROMPT = load_prompt("analista/correcao.md")
 
 PROVIDER_SCHEMA = provider_schema(AnalysisDraft)
 
-MAX_CASOS = 5
+MAX_CASOS = 6  # três deferidos e três indeferidos
 # TODO(revisão): crédito de cada situação no índice.
 CREDITO = {Status.ATENDIDO: 1.0, Status.PARCIAL: 0.5, Status.AUSENTE: 0.0}
 
@@ -102,7 +102,7 @@ def _validate_against_context(state: AnalistaState, analysis: AnalysisDraft) -> 
 def _allowed_sources(state: AnalistaState) -> list[str]:
     """Tudo o que a IA pode usar como fonte de súmula, lei ou número de processo."""
     request = state["request"]
-    sources = [request.relato, request.duvida or ""]
+    sources = [request.relato, request.duvida or "", request.mensagem or ""]
     for criterion in state["catalog"].criterios:
         sources += [criterion.nome, criterion.descricao, *criterion.fundamentos]
     for case in state["cases"]:
