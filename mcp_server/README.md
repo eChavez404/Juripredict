@@ -27,7 +27,7 @@ escritório e clica em **Permitir acesso**. Para desconectar: Configurações > 
 agentes > Aplicativos conectados. O fluxo do lado do servidor está em
 `backend/README.md`, seção "Conector MCP remoto".
 
-**Agente do JuriPredict (outro repositório).** É um cliente OAuth como qualquer outro:
+**Agente do JuriPredict (`agente/`, ainda não conectado).** É um cliente OAuth como qualquer outro:
 registra-se em `/oauth/registrar` (de preferência como cliente confidencial,
 `token_endpoint_auth_method: client_secret_basic`, guardando o segredo no servidor dele),
 leva a pessoa a `/autorizar` com PKCE S256 e `resource` igual ao endereço acima, troca o
