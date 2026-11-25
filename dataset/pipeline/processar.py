@@ -3,8 +3,8 @@ Espinha do pipeline. Liga as pecas que ja existiam ao banco:
 
     bruto (html/pdf/txt) -> texto -> secoes -> rotulo por regra -> banco
 
-Sem este script, cortar_secoes.py e rotular_por_regra.py sao funcoes soltas e
-extrair_llm.py nao encontra a tabela 'capitulos' de onde le.
+Sem este script, cortar_secoes.py e rotular_por_regra.py sao funcoes soltas, e a base
+da jurimetria e do RAG (exportar_jurimetria.py) nao tem de onde ler.
 
     python processar.py --entrada ../data/normalized --banco ../data/juripredict.db
     python processar.py --demo            # gera sentencas falsas e roda tudo

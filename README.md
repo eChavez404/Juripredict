@@ -1,9 +1,6 @@
 # JuriPredict
 
-**Jurimetria trabalhista sobre dados judiciais públicos.**
-
-Quanto vale saber que, na vara em que seu caso tramita, o pedido que você vai
-fazer é deferido em 58% das vezes — e não em 80%, como você imaginava?
+**Jurimetria trabalhista sobre dados judiciais públicos, com um agente de IA que ajuda o advogado a estruturar o caso.**
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-orange)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
@@ -15,364 +12,179 @@ fazer é deferido em 58% das vezes — e não em 80%, como você imaginava?
 
 ## Sobre
 
-Sentenças judiciais brasileiras são públicas. Metadados de processos também.
-O que não existe é a **agregação estatística** desses dados no nível em que um
-advogado precisa decidir: como esta vara, neste tipo de pedido, vem julgando.
+Sentenças trabalhistas são públicas, mas não estão em forma que responda à pergunta do
+advogado: como esta vara vem julgando este pedido, com base em quantos casos, e quais são eles.
+O JuriPredict responde isso para o **adicional de insalubridade e o de periculosidade no TRT da
+16ª Região** (Maranhão) e ajuda a estruturar o caso contra o que já deu certo e o que não deu.
 
-Os sistemas oficiais respondem "quais decisões existem". O JuriPredict responde
-"em que proporção esse pedido é deferido aqui, com base em quantos casos, e
-quais são eles".
+## O que a aplicação faz
 
-O recorte inicial é o **adicional de insalubridade no TRT da 16ª Região**
-(Maranhão). O corpus coletado até agora cobre **janeiro de 2024 a janeiro de
-2026** — 787 sentenças. A janela pretendida é maior; esta é a que existe.
-
-> **O conjunto de dados está em [`publicacao/juripredict_insalubridade.csv`](publicacao/juripredict_insalubridade.csv)**
-> — 413 registros, com [cartão de descrição](publicacao/DATASET_CARD.md) ao lado.
-> É a versão pseudonimizada: sem texto de sentença, sem número de processo e sem
-> nome de parte.
-
-## Big Data e Ciência de Dados (TEDs 01 a 03)
-
-Na disciplina de Big Data e Ciência de Dados, a equipe substituiu o conjunto próprio
-de sentenças por uma base pública e passou a tratar um problema que ela sustenta:
-**classificar a situação atual de um processo (arquivado, ativo ou suspenso) a partir
-das suas movimentações**. O conjunto anterior continua em `dataset/` e `publicacao/`
-como registro histórico. O documento técnico, que reúne as três etapas e explica o
-motivo da troca, está em `docs/JuriPredict_Documento_Tecnico_BigData.pdf`.
-
-**Equipe:** Elias Chaves Sousa, Marcos Antonio Cirqueira, Kauan Leite Dos Santos e
-Pedro Vitor Rocha Do Val.
-
-**Base:** [Brazilian Legal Proceedings](https://www.kaggle.com/datasets/felipepolo/brazilian-legal-proceedings),
-de Felipe Maia Polo, versão 2 (14/05/2021). São 6.449 processos rotulados por
-advogados e cerca de 2,9 milhões de movimentações sem rótulo, das justiças estaduais
-de São Paulo e do Rio de Janeiro.
-
-| Pasta | Conteúdo |
-|---|---|
-| `docs/` | Documento técnico das TEDs 01 a 03 (seções 1 a 5, 6 e 7, e 8 a 10, respectivamente) |
-| `data/raw/` e `data/processed/` | Base original e base tratada; só a estrutura é versionada (ver `data/README.md`) |
-| `notebooks/TED01` a `notebooks/TED03` | Um notebook por etapa, que executa o script da etapa e mostra os resultados |
-| `notebooks/JuriPredict_Colab.ipynb` | Notebook autocontido para o Google Colab: baixa a base e reproduz as 11 figuras do documento |
-| `src/` | Scripts das etapas, testes da limpeza e dependências |
-| `resultados/` | Métricas, gráficos e metadados da base tratada, sem o texto das movimentações |
-
-Os dados não ficam no repositório: a licença declarada na fonte é "Unknown", os
-arquivos somam 658 MB e os textos trazem nomes de partes e advogados. O script da
-TED 01 baixa os arquivos diretamente da fonte, sem credencial, e confere o SHA-256
-da versão usada. Em `resultados/` ficam as métricas, os gráficos e os metadados da
-base tratada, todos sem o texto das movimentações.
-
-**Tecnologias:** Python 3.12, pandas, NumPy, SciPy, scikit-learn, matplotlib, joblib,
-pytest e Jupyter. As versões exatas estão em `src/requirements.txt`.
-
-```bash
-python -m venv .venv-dados
-.venv-dados\Scripts\activate          # Windows
-pip install -r src/requirements.txt
-
-python src/ted01_baixar_e_inspecionar.py   # download, integridade e estrutura
-python src/ted02_limpar_e_explorar.py      # limpeza, estatísticas e gráficos
-python src/ted03_modelar.py                # experimentos, teste e generalização
-python -m pytest src/test_limpeza.py       # regras de limpeza
-```
-
-Os dados vão para `data/raw/` e `data/processed/`, cujo conteúdo fica fora do Git. Para
-usar outra pasta, defina a variável de ambiente `DADOS_DIR`. Os notebooks executam os
-mesmos scripts, na mesma ordem; para abri-los, instale também o Jupyter
-(`pip install notebook`). Em Windows, mantenha o ambiente virtual em um caminho curto:
-o scikit-learn falha ao importar quando o caminho passa de 260 caracteres.
+- **Gestão do escritório:** clientes, processos, documentos, agenda, cálculo de prazos em dias
+  úteis, andamentos lidos do DataJud, central de pendências, equipe com papéis, trilha de
+  auditoria, e aceite, exportação e exclusão de dados (LGPD).
+- **Jurimetria do TRT-16:** taxa de deferimento do pedido por vara e por ano, sempre com o n, o
+  intervalo de confiança e a cobertura da fonte, o que ficou fora da conta e as sentenças que
+  sustentam cada número. A aba "Seu escritório" faz o mesmo sobre a carteira cadastrada.
+- **Agente de IA:** uma conversa sobre o caso. A cada fato ou prova acrescentada, o agente avalia
+  o caso contra os critérios do tema, mostra o índice e a evolução dele, aponta o que melhorar,
+  pergunta o que falta e traz casos parecidos do TRT-16, deferidos e indeferidos.
+- **Conector MCP:** o Claude e outros assistentes consultam os dados do escritório, somente
+  leitura, autorizados por OAuth numa tela do app (`/mcp`).
 
 ## Princípios
 
-O projeto assume três compromissos que moldam a arquitetura inteira:
+- **Nenhum número aparece sozinho.** Toda taxa vem com o número de casos, o intervalo de
+  confiança e a cobertura da fonte naquele recorte.
+- **Todo número é rastreável.** Dá para abrir as decisões que originaram qualquer estimativa.
+- **Quando o dado não sustenta, não se estima.** Abaixo do piso de amostra, sem a conferência
+  humana do rótulo ou sem a cobertura medida, a tela informa o motivo em vez de um número frágil.
+- **O índice do agente não é probabilidade de êxito.** Mede quanto do que o tema exige está
+  demonstrado, e é calculado em código, não pela IA.
 
-- **Nenhum número aparece sozinho.** Toda taxa vem acompanhada do número de
-  casos que a sustenta, do intervalo de confiança e da cobertura da fonte
-  naquele recorte.
-- **Todo número é rastreável.** É possível abrir a lista de decisões que
-  originaram qualquer estimativa exibida.
-- **Quando o dado não sustenta, não se estima.** Abaixo de um piso de amostra ou
-  de cobertura, a interface informa o motivo em vez de exibir um número frágil.
+Dados pessoais das partes não viram variável nem aparecem na tela: os trechos de decisões saem
+sem nome de parte, e CPF, CNPJ, PIS, e-mail e telefone são mascarados antes de qualquer envio à IA.
 
-Dados pessoais das partes não são usados como variável nem exibidos.
+## Arquitetura
 
-## Como funciona
+Um contêiner só, em produção e no Docker local:
 
-O sistema tem dois fluxos que rodam em momentos diferentes e não compartilham
-ciclo de execução.
+```text
+navegador ─► nginx (porta pública)
+              ├─ /mcp ─────────► servidor MCP   127.0.0.1:8002 ─┐
+              └─ resto ────────► Django + React  127.0.0.1:8000 ◄┘ (API, por dentro)
+                                    │
+                                    └─► agente de IA  127.0.0.1:8001 ─► Google, Pinecone, Langfuse
+PostgreSQL ◄── Django
+```
 
-**Ingestão (offline, em lote).** Coleta metadados processuais e o inteiro teor
-das sentenças em fontes públicas, une as duas bases pelo número CNJ, deduplica,
-segmenta os documentos e extrai o resultado de cada pedido. Roda como scripts
-versionados, não como serviço.
-
-**Consulta (online).** Aplicação Django expondo API REST sobre a base já
-construída, consumida por um front-end React. As consultas da primeira versão
-são agregações relacionais — sem dependência de modelo em tempo de requisição.
-
-Uma camada preditiva está prevista, isolada em serviço próprio, e só entra
-depois que a qualidade da base for medida.
-
-## Stack
+O `backend/iniciar.sh` sobe os quatro processos; o agente e o MCP recebem só as variáveis de que
+precisam, sem as chaves do Django nem a do banco, e o `manter.sh` reinicia o que cair. A base de
+decisões vem de um pipeline que roda fora da aplicação (`dataset/`).
 
 | Camada | Tecnologia |
 |---|---|
-| Linguagem | Python 3 |
-| Ingestão | requests, BeautifulSoup, pandas |
-| Extração | expressões regulares e modelo de linguagem via API |
-| Banco de dados | PostgreSQL |
-| Backend | Django, Django REST Framework |
-| Frontend | React |
-| Modelagem preditiva | scikit-learn, LightGBM *(previsto)* |
-| Serviço de inferência | FastAPI *(previsto)* |
-| Agente de IA | FastAPI, LangChain, LangGraph, Gemini, Pinecone |
+| Backend | Python 3.12, Django 6, Django REST Framework, Simple JWT, drf-spectacular |
+| Frontend | React 19, TypeScript, Vite, Axios, Recharts |
+| Agente de IA | FastAPI, LangChain, LangGraph, Gemini, Pinecone, Langfuse |
+| Conector MCP | SDK oficial do MCP, OAuth 2.1 |
+| Dados | coletor do Falcão (CSJT), regras de rotulagem, pandas, SQLite |
+| Banco e hospedagem | PostgreSQL, Docker, Render |
 
 ## Estrutura
 
-```
-dataset/
-  collector/        coleta no repositório de jurisprudência
-    session.py        sessão pública, com alternativa manual
-    client.py         limite de requisições, repetição, tamanho de página fixo
-    collector.py      paginação e retomada
-    storage.py        bruto + manifesto SQLite + hash
-    normalize.py      HTML → texto
-    audit.py          duplicidade e composição do corpus
-  pipeline/         bruto → dataset rotulado
-    processar.py        espinha: seções → rótulo → banco
-    cortar_secoes.py    relatório / fundamentação / dispositivo
-    rotular_por_regra.py extração de resultado
-    extrair_llm.py      extração de variáveis de conteúdo
-    gold_set.py         amostragem e concordância contra leitura humana
-    rotular_ambiguos.py resolve por leitura o que a regra recusou
-    montar_dataset.py   monta O dataset: invariantes, limpeza, partição
-    dividir_dataset.py  confere o corte temporal 60/20/20
-    exportar_dataset.py versão publicável
-    gerar_finetune.py   pares texto → rótulo
-    auditoria_cobertura.py  medição de cobertura das fontes
-    schema.sql
-  tests/            21 testes, sem rede
-publicacao/         **o dataset publicado** — CSV + cartão de descrição
-backend/            aplicação Django e API REST com CRUD e autenticação JWT
-frontend/           aplicação React integrada à API
-agente/             agente de IA: serviço interno que mede o caso e busca decisões próximas
+```text
+backend/       Django: API, autenticação, escritórios, auditoria, jurimetria e conversa com o agente
+frontend/      React: as telas do app
+agente/        agente de IA (FastAPI + LangGraph), sem tela; só o backend o chama
+mcp_server/    servidor MCP somente leitura
+dataset/       coleta no Falcão e pipeline que gera a base da jurimetria e do RAG
+Dockerfile     imagem única de produção (site, agente e MCP)
+render.yaml    hospedagem no Render
 ```
 
-### O que está no repositório e o que fica local
+## Rodando localmente
 
-| | no GitHub | por quê |
-|---|---|---|
-| Código do coletor e do pipeline | sim | é o trabalho |
-| `publicacao/juripredict_insalubridade.csv` | **sim** | pseudonimizado, sem texto nem número de processo |
-| `publicacao/DATASET_CARD.md` | sim | procedência, limitações e o que o conjunto não é |
-| `dataset/data/` — corpus, banco, dataset de trabalho | não | sentenças trazem nome de parte e laudo pericial |
-| `finetune/*.jsonl` | não | carregam o texto integral das decisões |
-| `_mapa_unidades_NAO_PUBLICAR.csv` | não | desfaz a pseudonimização |
+**Com Docker** (a aplicação inteira, igual à produção, com PostgreSQL):
 
-O corpus é reconstruível: `dataset/collector/` baixa de novo da fonte pública, e
-o pipeline reproduz o dataset a partir dele.
+```powershell
+Copy-Item .env.example .env       # preencha as três chaves obrigatórias
+docker compose up --build
+```
 
-## Jurimetria do TRT-16
+Acesse `http://localhost:8080`. Para o agente analisar, preencha também a `GOOGLE_API_KEY`.
 
-A tela Jurimetria abre na visão do tribunal: taxa de deferimento do pedido nas sentenças
-públicas do TRT-16, por vara e por ano, com o n, o intervalo de confiança, a cobertura da
-fonte, o que ficou fora da conta e as sentenças que sustentam cada número (protótipos da
-TED 3). A visão "Seu escritório" é a jurimetria da carteira, que já existia.
+**Para desenvolver**, cada parte roda separada:
 
-**A taxa só aparece depois de validada.** Enquanto o rótulo automático não for conferido por
-leitura humana (gold set) e a cobertura da fonte não for medida, a tela mostra o n e as
-sentenças, com o motivo da supressão (invariante I3).
+```powershell
+# backend, em http://localhost:8000
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+Copy-Item backend\juripredict\.env.example backend\juripredict\.env
+python backend\juripredict\manage.py migrate
+python backend\juripredict\manage.py runserver
+
+# frontend, em http://localhost:5173 (encaminha /api ao backend)
+cd frontend; npm ci; npm run dev
+
+# agente de IA, em http://127.0.0.1:8001
+cd agente; uv sync; Copy-Item .env.example .env; uv run python -m app.main
+```
+
+Para o backend falar com o agente, use o mesmo `AGENTE_SEGREDO` no `.env` dos dois e
+`AGENTE_URL=http://127.0.0.1:8001` no do backend. Os detalhes estão em `backend/README.md`,
+`frontend/README.md`, `agente/README.md` e `mcp_server/README.md`.
+
+## Bases de dados: jurimetria e RAG
+
+O corpus são sentenças públicas do TRT-16 baixadas do Falcão (`dataset/collector/`), fora do Git
+por trazerem nomes de partes. O pipeline rotula o resultado de cada pedido por regra e gera duas
+saídas sem nome de parte: o CSV da jurimetria e os trechos do RAG.
 
 ```bash
 cd dataset/pipeline
 python processar.py --entrada C:/dados/falcao-trt16/normalized --somente sentencas \
   --temas insalubridade,periculosidade --banco ../data/trt16.db \
   --manifest C:/dados/falcao-trt16/manifests/falcao.sqlite
-python exportar_jurimetria.py           # -> ../data/jurimetria_trt16.csv (fora do Git)
+python exportar_jurimetria.py --rag ../data/rag_trt16.jsonl
 
-cd ../../backend/juripredict
-python manage.py importar_decisoes_trt ../../dataset/data/jurimetria_trt16.csv
+# jurimetria: importa no banco (em produção, com a DATABASE_URL externa do Render)
+python ../../backend/juripredict/manage.py importar_decisoes_trt ../data/jurimetria_trt16.csv
+
+# RAG: cria o índice no Pinecone e envia os trechos (chaves no .env do agente)
+cd ../../agente && uv run python -m app.indexar ../dataset/data/rag_trt16.jsonl
 ```
 
-Para importar em produção, rode o último comando com a `DATABASE_URL` externa do banco do
-Render. A importação substitui a base inteira numa transação. Quando o gold set e a cobertura
-forem medidos, passe-os em `--validacao validacao.json`:
+**As taxas do TRT-16 só aparecem depois de validadas.** Até lá, a tela mostra o n e as sentenças.
+Para liberar:
+
+1. **Conferência humana:** ler e anotar uma amostra (`python gold_set.py amostrar --banco ../data/trt16.db --n 70`)
+   e medir a concordância (`python gold_set.py comparar`).
+2. **Cobertura:** medir com `auditoria_cobertura.py`, que precisa da chave do DataJud.
+3. **Reimportar com a validação:** `importar_decisoes_trt` com `--validacao validacao.json`:
 
 ```json
 {"gold_set": {"anotados": 70, "concordancia_deferido": 0.95, "concordancia_indeferido": 0.93},
  "cobertura": {"geral": 81, "Vara do Trabalho de Balsas": 84, "ano:2025": 79}}
 ```
 
-As travas ficam em `JURIMETRIA_TRT_GOLD_MINIMO` (50) e `JURIMETRIA_TRT_CONCORDANCIA_MINIMA`
-(0,9), nas duas classes. O trecho do dispositivo sai sem nome de parte, por uma heurística
-medida no corpus; uma empresa com nome de palavra comum pode passar.
+As travas são `JURIMETRIA_TRT_GOLD_MINIMO` (50 decisões) e `JURIMETRIA_TRT_CONCORDANCIA_MINIMA`
+(0,9 em deferidos e em indeferidos).
 
-## Rodando localmente
-
-```powershell
-git clone <url-do-repositorio>
-cd juripredict
-
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-pip install -r backend\requirements.txt
-Copy-Item backend\juripredict\.env.example backend\juripredict\.env
-python backend\juripredict\manage.py migrate
-```
-
-As instruções específicas da API, da interface e do agente estão em `backend/README.md`,
-`frontend/README.md` e `agente/README.md`. Rode as migrações antes do primeiro acesso. Para subir a
-aplicação completa com PostgreSQL:
-
-```powershell
-Copy-Item .env.example .env
-# Preencha as três chaves da seção Docker Compose antes de continuar.
-docker compose up --build
-```
-
-O frontend fica em `http://localhost` e a API em `http://localhost:8000/api/v1/`.
-A hospedagem escolhida por ora é o **Render** (`render.yaml`, que também declara os
-agendamentos).
-
-**Coleta** (a partir de `dataset/`):
+## Testes
 
 ```bash
-python -m collector.falcao --query "insalubridade" --tribunal TRT16 \
-  --date-start 2024-01-01 --date-end 2026-08-18 --pages 5
+cd backend/juripredict && python manage.py test        # API, papéis, jurimetria, agente
+cd frontend && npm run lint && npm test && npm run build
+cd agente && uv run pytest                             # grafo, guard rails, busca, indexador
+cd mcp_server && python -m unittest
+python -m pytest dataset/tests                         # coletor e pipeline
 ```
 
-**Pipeline** (a partir de `dataset/pipeline/`, que é o diretório de trabalho
-assumido pelos caminhos padrão):
+O CI (`.github/workflows/ci.yml`) roda tudo isso e constrói a imagem de produção.
 
-```bash
-python processar.py                      # normalizado → seções → rótulo → banco
-python rotular_ambiguos.py exportar      # planilha dos casos que a regra recusou
-python rotular_ambiguos.py importar --aplicar
-python gold_set.py amostrar --n 50       # sorteia a amostra de anotação manual
-python gold_set.py comparar              # concordância, reportada por classe
-python montar_dataset.py                 # grava ../data/juripredict.csv
-python dividir_dataset.py                # confere o corte temporal
-python exportar_dataset.py               # versão publicável + cartão
-python gerar_finetune.py                 # pares texto → rótulo, por destilação
-python exportar_jurimetria.py           # base da jurimetria do TRT-16 (ver abaixo)
-```
+## Hospedagem
 
-Todo script aceita `--demo`, que roda o caminho de código inteiro com dados
-fabricados, sem rede e sem tocar no corpus:
+Em produção: **https://juripredict.onrender.com**. O Render (`render.yaml`) publica a imagem da raiz como um serviço web, com o banco PostgreSQL e
+três tarefas agendadas (lembretes, andamentos e limpeza de tokens; plano pago). No painel, em
+Environment do serviço `juripredict`, ficam as chaves de fora do código: `GOOGLE_API_KEY` (agente),
+`PINECONE_API_KEY` e `PINECONE_INDEX` (casos parecidos), e-mail, armazenamento R2, DataJud e Sentry.
 
-```bash
-python cortar_secoes.py                  # testes embutidos
-python rotular_por_regra.py              # testes embutidos
-python dividir_dataset.py --demo
-cd ../ && python -m pytest tests/ -q     # 21 testes
-```
+## O que falta para abrir a clientes
 
-## O dataset
-
-Há duas versões, com finalidades diferentes.
-
-**A publicada** — `publicacao/juripredict_insalubridade.csv`, 413 registros e 12
-colunas. É a que está no repositório e a que deve ser usada para análise. O
-processo aparece como hash truncado, a unidade julgadora como pseudônimo estável
-(`unidade_01`, `unidade_02`, …), e a data reduzida a ano e trimestre.
-
-**A de trabalho** — `dataset/data/juripredict.csv`, 618 linhas. Fica local, porque
-carrega o número do processo. Todo caso do pedido está nela, inclusive os que não
-entram no modelo: duas colunas dizem o estatuto de cada linha, em vez de a
-exclusão existir só como número num relatório.
-
-| `populacao` | linhas | o que é |
-|---|---|---|
-| `modelo` | 413 | sentença de mérito de 1º grau com resultado deferido ou indeferido. Único recorte treinável; só aqui `y` e `particao` estão preenchidos |
-| `fora_da_populacao` | 116 | o documento não julga o pedido pela primeira vez: liquidação, embargos de declaração, homologação |
-| `escape` | 89 | o pedido não foi julgado no mérito: ambíguo, não analisado, ou só mencionado de passagem |
-
-`motivo_fora` traz o motivo exato. Para treinar ou avaliar, filtre
-`populacao == "modelo"` — as demais linhas têm `y` nulo de propósito.
-
-Taxa-base 67,3%, 22 unidades julgadoras, 7 regiões, jan/2024 a jan/2026.
-Partição temporal: treino 250, calibração 81, teste 82.
-
-### Versão do dataset
-
-O pipeline tem duas versões, na constante `VERSAO_DATASET` em
-`dataset/pipeline/rotular_por_regra.py`:
-
-- **1.0** (ativa) — reproduz a metodologia da monografia.
-- **2.0** — aplica três correções de coerência encontradas em revisão: exclui
-  ações coletivas, casos em que o adicional só aparece como base de reflexo de
-  outra verba, e casos em que o próprio pedido foi extinto sem mérito. Dá 396
-  registros e taxa-base 68,2%.
-
-As regras das duas versões estão escritas e testadas. `JURIPREDICT_VERSAO=2.0`
-troca sem alterar código.
-
-## Andamento
-
-**Funciona hoje:** a camada de dados inteira. Coleta, segmentação, rotulagem por
-regra, resolução dos casos ambíguos, montagem, divisão temporal, exportação
-publicável e geração dos pares de fine-tuning. Tudo roda de ponta a ponta sobre
-787 sentenças reais e produz o dataset acima.
-
-**Bloqueio principal: o gold set está vazio.** Nenhum rótulo foi conferido
-contra leitura humana — 89% vêm de regra determinística e 11% de leitura por
-modelo. Sem essa medição não se sabe se o erro de rotulagem depende do desfecho,
-que é justamente o modo de falha que o projeto existe para evitar. A amostra já
-está sorteada e estratificada em `dataset/data/gold_set.csv`: 70 casos, sem o
-rótulo automático à vista. É trabalho humano, e é o próximo passo.
-
-**Cobertura ainda não medida.** O coletor do DataJud agora roda contra a API, e a
-auditoria já produziu uma amostra. Mas o assunto "Adicional de Insalubridade" do
-CNJ cobre só 45% das sentenças que efetivamente julgam o tema — o catálogo do
-tribunal não delimita o universo, então o denominador da cobertura precisa ser
-redefinido antes de o número significar alguma coisa.
-
-| Etapa | Situação |
-|---|---|
-| Coleta no repositório de jurisprudência | 787 sentenças, jan/2024 a jan/2026 |
-| Segmentação e rotulagem por regra | implementado, 14 casos de teste |
-| Resolução dos casos ambíguos | 154 lidos e rotulados por modelo |
-| Dataset consolidado | 618 linhas, 413 treináveis |
-| Versão publicável | 413 linhas, pseudonimizada, sem texto |
-| Pares de fine-tuning | 331 exemplos em 3 formatos |
-| Gold set (anotação humana) | **vazio — bloqueia a medição de erro** |
-| Auditoria de cobertura | amostra coletada, denominador em revisão |
-| Extração de variáveis de conteúdo | previsto, depende do gold set |
-| API e interface de gestão | CRUD integrado de clientes, processos, agenda e indicadores |
-| Cadastro, convite de equipe e recuperação de senha | implementado e testado; depende de configurar o envio de e-mail |
-| Lembretes de prazo e audiência por e-mail | implementado e testado; depende de agendar o comando |
-| Confirmação de e-mail no cadastro | implementado e testado; não bloqueia o login (aviso no app) |
-| Andamento automático dos processos (DataJud) | implementado e testado; avisa por e-mail as novidades; depende da chave do DataJud e do cron; TRTs e TRFs |
-| Documentação da API | OpenAPI 3 em `backend/openapi.yaml`, conferida por teste; Swagger UI em `/api/docs/` só em desenvolvimento |
-| Papéis aplicados no servidor | estagiário não vê valor da causa nem jurimetria, vê CPF/CNPJ mascarado e não exclui; regras padrão a confirmar com o escritório |
-| Servidor MCP somente leitura (`mcp_server/`) | implementado e testado ponta a ponta; local com token de API ou como conector remoto em `/mcp`, no mesmo serviço do site, autorizado por OAuth 2.1 numa tela do app; rotas fixas e toda consulta auditada |
-| Agente de IA (`agente/`) | página no app, atrás do login, e serviço interno chamado só pelo backend; testado ponta a ponta com IA e base simuladas; em produção roda dentro do serviço do site; a base de casos no Pinecone ainda não existe |
-| Vários documentos por processo | implementado e testado; até 50 por processo; depende do R2 em produção |
-| LGPD: aceite dos termos, exportação e exclusão de conta | implementado e testado; texto jurídico em revisão |
-| Sessões | renovação com rotação e logout que revoga no servidor |
-| Jurimetria da carteira | taxa sempre com n e intervalo de confiança; suprimida abaixo de 10 processos; filtros por área e ano, comparação por vara e por ano, lista dos processos que sustentam cada número e exportação em CSV |
-| Cálculo de prazos | dias úteis (CLT e CPC) com memória do cálculo; só não conta o que é certo, e o incerto é sinalizado; vira compromisso na agenda a partir de um andamento |
-| Central de pendências | prazos vencidos, próximos 7 dias e andamentos recentes no sino do topo |
-| Modelo preditivo | condicionado à medição de erro |
-
-**Plataforma: o que falta para abrir a clientes.** O código está pronto e testado, mas
-quatro itens dependem de configuração fora dele: um provedor de e-mail (sem ele, convite,
-recuperação de senha e confirmação de e-mail não chegam), o armazenamento de arquivos em R2 (sem ele, as petições
-enviadas somem a cada deploy), um plano pago com backup do banco, e a revisão dos Termos e
-da Política de Privacidade por um advogado. Os detalhes estão em `backend/README.md`.
-
-**O que o dataset sustenta hoje:** desenvolvimento do pipeline e jurimetria
-descritiva com ressalva. **O que não sustenta:** afirmar que uma vara defere
-mais que outra — para isso falta medir o erro de rotulagem e a cobertura.
+- **Conferência humana do rótulo e cobertura da fonte:** sem elas, as taxas do TRT-16 ficam suprimidas.
+- **Base do RAG no Pinecone:** sem ela, o agente analisa pelos critérios, sem casos parecidos.
+- **Plano pago do Gemini e Política de Privacidade:** no plano gratuito, o Google pode usar o
+  conteúdo enviado; a política precisa citar os provedores de IA antes do uso com casos reais.
+- **Revisão jurídica dos critérios do agente**, que são um rascunho.
+- **Configuração de produção:** provedor de e-mail, armazenamento em R2, plano com backup do
+  banco e revisão dos Termos por um advogado (detalhes em `backend/README.md`).
 
 ## Contexto
 
-Projeto desenvolvido em 2026.2 no curso de Sistemas de Informação do Centro
-Universitário UNIBALSAS, em Balsas — MA. A documentação técnica e metodológica
-completa não é pública.
+Projeto desenvolvido em 2026.2 no curso de Sistemas de Informação do Centro Universitário
+UNIBALSAS, em Balsas — MA. O material acadêmico das TEDs (notebooks, scripts e resultados de Big
+Data) saiu do repositório na limpeza de novembro de 2026 e está na tag `antes-da-limpeza`.
 
 ---
 
