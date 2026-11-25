@@ -66,6 +66,8 @@ describe('Agente', () => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.mocked(agenteService.opcoes).mockResolvedValue({
+      ia_configurada: true,
+      base_configurada: true,
       temas: [{ value: 'insalubridade', label: 'Adicional de insalubridade' }],
       fases: [{ value: 'instrucao', label: 'Em instrução' }],
       provas: [{ value: 'ppp', label: 'PPP' }],
@@ -115,6 +117,48 @@ describe('Agente', () => {
     expect(bloco.getByText('Apoio: 0016123-45.2024.5.16.0001')).toBeInTheDocument();
     expect(agenteService.consultar).toHaveBeenCalledTimes(2);
     expect(agenteService.consultar).toHaveBeenCalledWith('assinado:1');
+  });
+
+  it('mostra o andamento por etapa, com o tempo, e diz que consulta a base', async () => {
+    vi.mocked(agenteService.iniciar).mockResolvedValue(analise({ step: 'retrieve_cases' }));
+    vi.mocked(agenteService.consultar).mockResolvedValue(analise({ step: 'analyze_case' }));
+    render(tela());
+    await enviar();
+
+    const andamento = within(screen.getByRole('region', { name: 'Andamento da análise' }));
+    expect(await andamento.findByText('Buscando decisões parecidas na base do TRT-16...')).toBeInTheDocument();
+    expect(andamento.getAllByRole('listitem')).toHaveLength(4);
+    await avancar();
+
+    expect(await andamento.findByText('Analisando o caso com o resultado da busca...')).toBeInTheDocument();
+    expect(andamento.getByText(/Aguardando a análise há [1-9]\d* s/)).toBeInTheDocument();
+    expect(andamento.getAllByRole('listitem')[2]).toHaveAttribute('aria-current', 'step');
+  });
+
+  it('sem base conectada não diz que consultou decisões', async () => {
+    vi.mocked(agenteService.opcoes).mockResolvedValue({
+      ia_configurada: true,
+      base_configurada: false,
+      temas: [{ value: 'insalubridade', label: 'Adicional de insalubridade' }],
+      fases: [{ value: 'instrucao', label: 'Em instrução' }],
+      provas: [{ value: 'ppp', label: 'PPP' }],
+    });
+    render(tela());
+    await enviar();
+
+    const andamento = screen.getByRole('region', { name: 'Andamento da análise' });
+    expect(andamento).toHaveTextContent('Base de decisões ainda não conectada');
+    expect(andamento).not.toHaveTextContent('Buscando decisões');
+  });
+
+  it('sem a chave da IA avisa antes e não deixa enviar', async () => {
+    vi.mocked(agenteService.opcoes).mockResolvedValue({
+      ia_configurada: false, base_configurada: false, temas: [], fases: [], provas: [],
+    });
+    render(tela());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('GOOGLE_API_KEY');
+    expect(screen.getByRole('button', { name: 'Analisar caso' })).toBeDisabled();
   });
 
   it('mostra o erro do agente e deixa tentar de novo, sem perder o relato', async () => {

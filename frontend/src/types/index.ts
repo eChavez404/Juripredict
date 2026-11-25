@@ -167,7 +167,13 @@ export type Pendencias = {
 
 // Agente de IA: espelha agente/app/agents/analista/schema.py.
 export type AgenteOpcao = { value: string; label: string };
-export type AgenteOpcoes = { temas: AgenteOpcao[]; fases: AgenteOpcao[]; provas: AgenteOpcao[] };
+export type AgenteOpcoes = {
+  ia_configurada: boolean;
+  base_configurada: boolean;
+  temas: AgenteOpcao[];
+  fases: AgenteOpcao[];
+  provas: AgenteOpcao[];
+};
 
 export type AgenteCaso = {
   tema: string;

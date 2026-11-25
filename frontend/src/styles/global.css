@@ -2892,3 +2892,103 @@ h6 {
 .agente-itens strong {
   font-size: 0.8rem;
 }
+
+.agente-progresso {
+  display: grid;
+  gap: 1rem;
+}
+
+.agente-progresso__topo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.agente-progresso__topo strong {
+  font-size: 0.84rem;
+}
+
+.agente-progresso__topo p {
+  margin-top: 0.2rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.agente-progresso__giro {
+  flex: 0 0 auto;
+  color: var(--accent-primary);
+  animation: agente-giro 1s linear infinite;
+}
+
+.agente-progresso__barra {
+  height: 4px;
+  overflow: hidden;
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+.agente-progresso__barra span {
+  display: block;
+  width: 35%;
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: inherit;
+  animation: agente-barra 1.6s ease-in-out infinite;
+}
+
+.agente-progresso ol {
+  display: grid;
+  gap: 0.55rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  list-style: none;
+}
+
+.agente-progresso li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.agente-progresso li > span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  font-size: 0.64rem;
+  font-weight: 600;
+}
+
+.agente-progresso li.feito > span {
+  color: #ffffff;
+  background: var(--success);
+}
+
+.agente-progresso li.atual {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.agente-progresso li.atual > span {
+  color: #ffffff;
+  background: var(--accent-primary);
+}
+
+@keyframes agente-giro {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes agente-barra {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(290%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agente-progresso__giro,
+  .agente-progresso__barra span {
+    animation: none;
+  }
+}

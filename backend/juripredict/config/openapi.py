@@ -155,6 +155,8 @@ class AgenteOpcaoSerializer(serializers.Serializer):
 
 
 class AgenteOpcoesRespostaSerializer(serializers.Serializer):
+    ia_configurada = serializers.BooleanField(help_text="Há chave; não diz se ela funciona.")
+    base_configurada = serializers.BooleanField(help_text="Há chave e índice do Pinecone.")
     temas = AgenteOpcaoSerializer(many=True)
     fases = AgenteOpcaoSerializer(many=True)
     provas = AgenteOpcaoSerializer(many=True)
