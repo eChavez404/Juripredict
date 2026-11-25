@@ -175,15 +175,6 @@ export type AgenteOpcoes = {
   provas: AgenteOpcao[];
 };
 
-export type AgenteCaso = {
-  tema: string;
-  fase: string;
-  relato: string;
-  provas: string[];
-  orgao_julgador: string;
-  duvida: string;
-};
-
 export type AgenteSituacao = 'atendido' | 'parcial' | 'ausente' | 'nao_aplicavel';
 
 export type AgenteResultado = {
@@ -194,6 +185,8 @@ export type AgenteResultado = {
     melhorias: Array<{ criterio_id: string; acao: string; justificativa: string; caso_ids: string[] }>;
     casos_proximos: Array<{ caso_id: string; semelhancas: string; diferencas: string }>;
     riscos: string[];
+    resposta: string;
+    perguntas: string[];
   };
   catalogo: { versao: string; criterios: Array<{ id: string; nome: string; fundamentos: string[] }> };
   medicao: {
@@ -216,12 +209,41 @@ export type AgenteResultado = {
   disclaimer: string;
 };
 
-export type AgenteAnalise = {
-  id: string;
-  status: 'running' | 'done' | 'error';
-  step: string | null;
-  result: AgenteResultado | null;
-  error: string | null;
+export type AgenteCasoNovo = {
+  tema: string;
+  fase: string;
+  orgao_julgador: string;
+  provas: string[];
+  relato: string;
+};
+
+export type MensagemCaso = {
+  id: number;
+  autor: 'advogado' | 'agente';
+  texto: string;
+  status: 'pendente' | 'concluida' | 'erro';
+  erro: string;
+  resultado: AgenteResultado | null;
+  indice_atual: number | null;
+  indice_potencial: number | null;
+  criado_em: string;
+};
+
+export type CasoEstudo = {
+  id: number;
+  titulo: string;
+  tema: string;
+  fase: string;
+  orgao_julgador: string;
+  provas: string[];
+  mensagens: MensagemCaso[];
+  etapa: string | null;
+  criado_em: string;
+  atualizado_em: string;
+};
+
+export type CasoEstudoResumo = Pick<CasoEstudo, 'id' | 'titulo' | 'tema' | 'fase' | 'atualizado_em'> & {
+  indice_atual: number | null;
 };
 
 // Jurimetria do tribunal: sentenças públicas do TRT-16 (backend/juripredict/api/jurimetria_tribunal.py).

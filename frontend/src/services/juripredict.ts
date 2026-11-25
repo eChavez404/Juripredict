@@ -1,10 +1,11 @@
 import api from './api';
 import type {
-  AgenteAnalise,
-  DecisoesTribunal,
-  AgenteCaso,
+  AgenteCasoNovo,
   AgenteOpcoes,
+  DecisoesTribunal,
   AndamentosResposta,
+  CasoEstudo,
+  CasoEstudoResumo,
   Cliente,
   ClientePayload,
   DashboardData,
@@ -129,10 +130,16 @@ export const jurimetriaService = {
 
 export const agenteService = {
   opcoes: async () => (await api.get<AgenteOpcoes>('/agente/opcoes/')).data,
-  iniciar: async (caso: AgenteCaso) => (await api.post<AgenteAnalise>('/agente/analises/', caso)).data,
-  consultar: async (id: string) => (
-    await api.get<AgenteAnalise>(`/agente/analises/${encodeURIComponent(id)}/`)
+  casos: async () => (await api.get<CasoEstudoResumo[]>('/agente/casos/')).data,
+  caso: async (id: number) => (await api.get<CasoEstudo>(`/agente/casos/${id}/`)).data,
+  criar: async (caso: AgenteCasoNovo) => (await api.post<CasoEstudo>('/agente/casos/', caso)).data,
+  atualizar: async (id: number, dados: Pick<CasoEstudo, 'fase' | 'orgao_julgador' | 'provas'>) => (
+    await api.patch<CasoEstudo>(`/agente/casos/${id}/`, dados)
   ).data,
+  enviar: async (id: number, texto: string) => (
+    await api.post<CasoEstudo>(`/agente/casos/${id}/mensagens/`, { texto })
+  ).data,
+  excluir: async (id: number) => { await api.delete(`/agente/casos/${id}/`); },
 };
 
 export const prazoService = {
