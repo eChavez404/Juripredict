@@ -14,7 +14,7 @@ Agente de IA que mede um caso trabalhista, aponta o que melhorar e traz os casos
 React (/agente) → Django (login, papel, limite e auditoria) → agente (segredo) → Google, Pinecone, Langfuse
 ```
 
-O advogado informa tema, fase do processo, relato, provas e, se quiser, o órgão julgador e o ponto que mais preocupa. A análise passa por quatro etapas, orquestradas com LangGraph:
+O advogado conversa com o agente na página **Agente de IA**. Ele abre um caso (tema, fase, relato, provas e, se quiser, o órgão julgador) e depois acrescenta fatos, provas e respostas às perguntas do agente. O backend guarda a conversa e, a cada mensagem, manda ao agente o caso consolidado e a mensagem nova; o agente não guarda nada. Cada análise passa por quatro etapas, orquestradas com LangGraph:
 
 1. **Preparar o contexto:** carrega o catálogo de critérios do tema e registra as suposições.
 2. **Buscar casos:** consulta no Pinecone as decisões mais parecidas com o relato.
@@ -88,7 +88,22 @@ Fora o `/health`, tudo exige `Authorization: Bearer <AGENTE_SEGREDO>`, conferido
 
 Os jobs ficam na memória de um único processo: somem ao reiniciar o serviço e não funcionam com vários workers. Por padrão, o serviço só atende em `127.0.0.1`.
 
-## Contrato da base (provisório)
+## Base de casos (RAG)
+
+A busca traz os casos mais parecidos **separados por resultado**, metade deferidos e metade indeferidos, para o advogado ver o que deu certo e o que deu errado em casos como o dele. A resposta traz o que mudou, o novo índice e até cinco perguntas sobre o que falta saber.
+
+Para criar a base no Pinecone, com as sentenças do TRT-16 já sem nomes de parte:
+
+```bash
+cd dataset/pipeline
+python exportar_jurimetria.py --rag ../data/rag_trt16.jsonl   # trechos sem nome de parte
+cd ../../agente
+uv run python -m app.indexar ../dataset/data/rag_trt16.jsonl  # cria o índice e envia os vetores
+```
+
+O indexador cria o índice se ele não existir (768 dimensões, cosseno, AWS us-east-1) e retoma de onde parou. Usa `GOOGLE_API_KEY`, `PINECONE_API_KEY` e `PINECONE_INDEX` do `.env` do agente; depois, preencha os mesmos dois do Pinecone no Render. São cerca de 7 mil trechos de 3,2 mil sentenças.
+
+## Contrato da base
 
 Cada vetor no Pinecone precisa trazer os metadados de `RetrievedCase`, em `app/core/vector_store.py`: `id_sentenca` e `texto` (obrigatórios), `numero_cnj`, `tipo_documento`, `orgao_julgador`, `data_julgamento` e `resultado`, além de `temas`, uma lista com `insalubridade` e/ou `periculosidade`. Registro fora do contrato faz a busca falhar, e a análise segue sem casos, com aviso.
 
@@ -96,7 +111,7 @@ Cada vetor no Pinecone precisa trazer os metadados de `RetrievedCase`, em `app/c
 
 - O agente recebe só o caso: nem usuário, nem escritório, nem token.
 - CPF, CNPJ, PIS, e-mail e telefone são mascarados na entrada da API e nos trechos da base, antes de chegar ao Google e ao Langfuse. **Nomes não são mascarados:** o formulário pede que não sejam informados.
-- Os trechos da base precisam ser indexados sem os nomes das partes. O texto da decisão não é devolvido pela API.
+- Os trechos da base são indexados sem os nomes das partes (`exportar_jurimetria.py`). O texto da decisão não é devolvido pela API.
 - Os logs não registram relato, prompt nem resposta.
 
 ## Hospedagem

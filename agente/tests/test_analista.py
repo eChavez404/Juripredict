@@ -65,6 +65,8 @@ def _draft(situacoes=None, **overrides):
         "melhorias": [],
         "casos_proximos": [],
         "riscos": [],
+        "resposta": "O caso tem bom relato e falta a prova técnica.",
+        "perguntas": ["Houve perícia no local de trabalho?"],
     }
     return AnalysisDraft.model_validate({**data, **overrides})
 
@@ -174,17 +176,39 @@ class VectorStoreTests(unittest.TestCase):
         metadata = {"id_sentenca": id_sentenca, "texto": "trecho", **metadata}
         return SimpleNamespace(metadata=metadata, score=score)
 
-    def test_filters_by_theme_and_keeps_best_chunk_of_each_document(self):
-        matches = [self._match("a", 0.9), self._match("a", 0.8), self._match("b", 0.7)]
-        cases, index = self._search(matches)
-        self.assertEqual([(c.id_sentenca, c.similaridade) for c in cases], [("a", 0.9), ("b", 0.7)])
-        self.assertEqual(
-            index.query.call_args.kwargs["filter"], {"temas": {"$in": ["insalubridade"]}}
+    def _balanced(self, deferidos, indeferidos, limit=6):
+        index = Mock()
+        index.query.side_effect = lambda **kw: SimpleNamespace(
+            matches=deferidos if kw["filter"]["resultado"] == "deferido" else indeferidos
         )
+        with (
+            patch.object(vector_store, "_index", return_value=index),
+            patch.object(vector_store, "embed_query", return_value=[0.1]) as embed,
+        ):
+            return vector_store.search_cases("consulta", "insalubridade", limit), index, embed
 
-    def test_respects_limit(self):
-        cases, _ = self._search([self._match(str(i), 1 - i / 10) for i in range(6)], limit=2)
-        self.assertEqual(len(cases), 2)
+    def test_brings_granted_and_denied_cases_and_best_chunk_of_each(self):
+        deferidos = [self._match("a", 0.9), self._match("a", 0.8), self._match("b", 0.7)]
+        indeferidos = [self._match("c", 0.85)]
+        cases, index, embed = self._balanced(deferidos, indeferidos)
+        self.assertEqual(
+            [(c.id_sentenca, c.similaridade) for c in cases], [("a", 0.9), ("c", 0.85), ("b", 0.7)]
+        )
+        filtros = [chamada.kwargs["filter"] for chamada in index.query.call_args_list]
+        self.assertEqual(
+            filtros,
+            [
+                {"temas": {"$in": ["insalubridade"]}, "resultado": r}
+                for r in ("deferido", "indeferido")
+            ],
+        )
+        embed.assert_called_once()
+
+    def test_respects_limit_per_side(self):
+        muitos = [self._match(str(i), 1 - i / 10) for i in range(6)]
+        cases, _, _ = self._balanced(muitos, [self._match(f"n{i}", 0.5) for i in range(6)], limit=4)
+        self.assertEqual(len(cases), 4)
+        self.assertEqual(sum(c.id_sentenca.startswith("n") for c in cases), 2)
 
     def test_record_outside_contract_fails_loudly(self):
         with self.assertRaises(VectorStoreError):

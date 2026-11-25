@@ -238,6 +238,10 @@ if SENTRY_DSN:
 # Quantos processos concluídos uma taxa precisa ter para ser exibida. Abaixo
 # disso a taxa é suprimida, com o motivo: 1 favorável em 1 processo daria "100%".
 JURIMETRIA_PISO_AMOSTRA = int(os.getenv("JURIMETRIA_PISO_AMOSTRA", "10"))
+# Jurimetria do tribunal: a taxa só aparece depois que o rótulo automático for conferido por
+# leitura humana, com este mínimo de decisões e esta concordância em deferidos e indeferidos.
+JURIMETRIA_TRT_GOLD_MINIMO = int(os.getenv("JURIMETRIA_TRT_GOLD_MINIMO", "50"))
+JURIMETRIA_TRT_CONCORDANCIA_MINIMA = float(os.getenv("JURIMETRIA_TRT_CONCORDANCIA_MINIMA", "0.9"))
 
 # Teto de anexos por processo: evita que uma conta encha o storage sem querer.
 DOCUMENTOS_MAX_POR_PROCESSO = int(os.getenv("DOCUMENTOS_MAX_POR_PROCESSO", "50"))

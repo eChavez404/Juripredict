@@ -2,11 +2,11 @@
 dataset/data/
 dados/
 dado/
-# Dados das TEDs de Big Data: só a estrutura de pastas e o README entram no Git.
-/data/**
-!/data/**/
-!/data/README.md
-!/data/**/.gitkeep
+# Material local que não faz parte da aplicação (dados das TEDs, documentos, exportações antigas).
+/data/
+docs/
+finetune/
+publicacao/
 
 *.db
 *.db.*
@@ -36,15 +36,6 @@ dado/
 credentials.json
 service-account*.json
 
-publicacao/**/_mapa_unidades_NAO_PUBLICAR.csv
-publicacao/_mapa_unidades_NAO_PUBLICAR.csv
-
-finetune/*
-!finetune/.gitkeep
-!finetune/README.md
-
-!finetune/manifesto.json
-!finetune/DATASET_CARD.md
 
 dataset/pipeline/*.json
 dataset/pipeline/*.csv
@@ -53,7 +44,6 @@ dataset/collector/*.json
 dataset/collector/*.csv
 
 .venv/
-.venv-dados/
 venv/
 env/
 ENV/
@@ -114,12 +104,6 @@ $RECYCLE.BIN/
 *.pptx
 ~$*
 
-finetune/*
-!finetune/.gitkeep
-!finetune/README.md
-docs/*
-!docs/README.md
-!docs/JuriPredict_Documento_Tecnico_BigData.pdf
 
 .agents
 

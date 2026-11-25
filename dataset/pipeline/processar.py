@@ -3,11 +3,15 @@ Espinha do pipeline. Liga as pecas que ja existiam ao banco:
 
     bruto (html/pdf/txt) -> texto -> secoes -> rotulo por regra -> banco
 
-Sem este script, cortar_secoes.py e rotular_por_regra.py sao funcoes soltas e
-extrair_llm.py nao encontra a tabela 'capitulos' de onde le.
+Sem este script, cortar_secoes.py e rotular_por_regra.py sao funcoes soltas, e a base
+da jurimetria e do RAG (exportar_jurimetria.py) nao tem de onde ler.
 
     python processar.py --entrada ../data/normalized --banco ../data/juripredict.db
     python processar.py --demo            # gera sentencas falsas e roda tudo
+
+Corpus da jurimetria do tribunal (so as sentencas, os dois temas):
+
+    python processar.py --entrada C:/dados/falcao-trt16/normalized --somente sentencas \n        --temas insalubridade,periculosidade --banco ../data/trt16.db \n        --manifest C:/dados/falcao-trt16/manifests/falcao.sqlite
 """
 
 import argparse
@@ -135,6 +139,8 @@ def classificar_evento(texto, dispositivo, classe=None):
     return "MERITO_PRIMEIRO_GRAU"
 
 
+EVENTOS_FORA = {rotulo for rotulo, _ in PADROES_EVENTO}
+
 TEMAS_ALVO = ("insalubridade",)   # periculosidade entra quando o recorte abrir
 
 
@@ -247,19 +253,38 @@ def gravar_valor(con, caso_id, campo, valor, evidencia, metodo, versao):
          datetime.now().isoformat(timespec="seconds")))
 
 
+def _prevalece(novo, anterior):
+    """O documento novo substitui o ja gravado para o mesmo (processo, pedido)?
+
+    Um processo tem varios documentos no corpus: a sentenca, os embargos dela, a
+    liquidacao, a execucao. A linha do pedido precisa ser a da sentenca de merito
+    (I1); gravar o ultimo lido trocava 296 sentencas por embargos ou execucao.
+    Cada lado e (e_merito, tem_resultado, data_sentenca); entre duas de merito com
+    resultado, fica a primeira.
+    """
+    if anterior is None:
+        return True
+    chave = lambda d: (d[0], d[1])  # noqa: E731
+    if chave(novo) != chave(anterior):
+        return chave(novo) > chave(anterior)
+    return bool(novo[2]) and (not anterior[2] or novo[2] < anterior[2])
+
+
 # ------------------------------------------------------------------ pipeline
-def processar(entrada, banco, schema, manifest_path=None):
+def processar(entrada, banco, schema, manifest_path=None, somente=None):
     con = abrir(banco, schema)
     manifest = abrir_manifest(manifest_path)
     print(f"manifest: {len(manifest)} documentos indexados\n"
           if manifest else "manifest ausente — metadados pelo texto\n")
     arquivos = sorted(p for p in Path(entrada).rglob("*")
-                      if p.suffix.lower() in (".txt", ".html", ".htm", ".pdf"))
+                      if p.suffix.lower() in (".txt", ".html", ".htm", ".pdf")
+                      # acordaos ficam de fora: I1 e sentenca de 1o grau
+                      and (not somente or somente in p.parent.name))
     if not arquivos:
         sys.exit(f"nenhum documento em {entrada}")
 
     cont = {"docs": 0, "sem_secao": 0, "sem_capitulo": 0, "casos": 0,
-            "via_manifest": 0, "via_regex": 0, "sem_mencao": 0}
+            "via_manifest": 0, "via_regex": 0, "sem_mencao": 0, "preteridos": 0}
     estrategias, resultados, eventos = {}, {}, {}
 
     for caminho in arquivos:
@@ -329,6 +354,23 @@ def processar(entrada, banco, schema, manifest_path=None):
 
             entra = 1 if (r.resultado_pedido in ("deferido", "indeferido")
                           and evento == "MERITO_PRIMEIRO_GRAU") else 0
+            anterior = con.execute(
+                "SELECT c.caso_id, c.motivo_exclusao, c.resultado_pedido, d.data_sentenca"
+                " FROM casos c JOIN documentos d ON d.doc_id = c.doc_id"
+                " WHERE c.numero_cnj = ? AND c.pedido = ? AND c.caso_id <> ?",
+                (meta["numero_cnj"], tema, caso_id)).fetchone()
+            novo = (evento == "MERITO_PRIMEIRO_GRAU",
+                    r.resultado_pedido in ("deferido", "indeferido"),
+                    meta["data_sentenca"])
+            if anterior is not None:
+                ja = (anterior[1] not in EVENTOS_FORA,
+                      anterior[2] in ("deferido", "indeferido"), anterior[3])
+                if not _prevalece(novo, ja):
+                    cont["preteridos"] += 1
+                    continue
+                for tabela in ("valores", "capitulos"):
+                    con.execute(f"DELETE FROM {tabela} WHERE caso_id = ?", (anterior[0],))
+                cont["preteridos"] += 1
             motivo = None
             if not entra:
                 motivo = (evento if evento != "MERITO_PRIMEIRO_GRAU"
@@ -372,6 +414,8 @@ def relatorio(cont, estrategias, resultados, eventos=None):
           f"(nao impede o rotulo)")
     print(f"  tema ausente do documento {cont['sem_mencao']:>6}")
     print(f"  casos gravados            {cont['casos']:>6}")
+    print(f"  preteridos no processo    {cont.get('preteridos', 0):>6}  "
+          f"(outro documento do mesmo processo prevaleceu)")
     print(f"  metadados do manifest     {cont['via_manifest']:>6}")
     if cont["via_regex"]:
         print(f"  metadados por regex       {cont['via_regex']:>6}  "
@@ -467,6 +511,10 @@ if __name__ == "__main__":
     ap.add_argument("--manifest", default="../data/manifests/falcao.sqlite",
                     help="manifest do coletor; fonte dos metadados")
     ap.add_argument("--demo", action="store_true")
+    ap.add_argument("--temas", default=",".join(TEMAS_ALVO),
+                    help="pedidos rotulados, separados por virgula")
+    ap.add_argument("--somente", help="so pastas cujo nome contem este texto (ex.: sentencas)")
     a = ap.parse_args()
+    TEMAS_ALVO = tuple(t.strip() for t in a.temas.split(",") if t.strip())
     entrada = demo() if a.demo else a.entrada
-    processar(entrada, a.banco, a.schema, a.manifest)
+    processar(entrada, a.banco, a.schema, a.manifest, a.somente)

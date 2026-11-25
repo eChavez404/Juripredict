@@ -2,7 +2,7 @@
 
 Aplicação React + TypeScript construída com Vite. A interface consome a API
 Django e oferece autenticação, CRUD de clientes, processos e agenda, dashboard,
-jurimetria, agente de IA, gestão da equipe, auditoria e configurações da conta.
+jurimetria do TRT-16 e da carteira, conversa com o agente de IA, gestão da equipe, auditoria e configurações da conta.
 
 ## Execução
 
@@ -18,8 +18,8 @@ Acesse `http://localhost:5173`. O Vite encaminha `/api` ao backend em
 `http://localhost:8000`, mantendo frontend e API na mesma origem lógica. Para
 usar uma API externa, copie `.env.example` para `.env` e ajuste `VITE_API_URL`.
 
-Com `docker compose up --build`, acesse `http://localhost`; o Nginx do frontend
-encaminha `/api/` ao contêiner do backend.
+Em produção, a imagem da raiz compila o frontend e o Django o serve, na mesma origem da
+API; `docker compose up --build`, na raiz, sobe tudo em `http://localhost:8080`.
 
 Antes do primeiro acesso, crie o administrador pelo backend. Depois disso, use
 o e-mail e a senha cadastrados na tela de login.

@@ -162,16 +162,6 @@ class AgenteOpcoesRespostaSerializer(serializers.Serializer):
     provas = AgenteOpcaoSerializer(many=True)
 
 
-class AgenteAnaliseRespostaSerializer(serializers.Serializer):
-    id = serializers.CharField(help_text="Vale só para quem pediu, no mesmo escritório.")
-    status = serializers.CharField(help_text="running, done ou error.")
-    step = serializers.CharField(allow_null=True, help_text="Etapa em andamento.")
-    result = serializers.DictField(
-        allow_null=True, help_text="Contrato em agente/app/agents/analista/schema.py."
-    )
-    error = serializers.CharField(allow_null=True)
-
-
 class PendenciasRespostaSerializer(serializers.Serializer):
     urgentes = serializers.IntegerField(help_text="Prazos vencidos e compromissos até amanhã.")
     total_vencidos = serializers.IntegerField()
@@ -198,6 +188,88 @@ class JurimetriaRespostaSerializer(serializers.Serializer):
     filtros = FiltrosAplicadosSerializer()
     opcoes = OpcoesDeFiltroSerializer()
     insight = serializers.CharField()
+
+
+class TaxaTribunalSerializer(serializers.Serializer):
+    total = serializers.IntegerField(help_text="Decisões de mérito com resultado no recorte.")
+    suficiente = serializers.BooleanField()
+    favoravel = serializers.IntegerField(allow_null=True, help_text="Taxa de deferimento; nula se suprimida.")
+    desfavoravel = serializers.IntegerField(allow_null=True)
+    intervalo_favoravel = IntervaloSerializer(allow_null=True)
+    motivo = serializers.CharField(allow_null=True, help_text="Por que a taxa foi suprimida.")
+    cobertura = serializers.IntegerField(allow_null=True, help_text="Cobertura da fonte, em %.")
+
+
+class TaxaTribunalPorVaraSerializer(TaxaTribunalSerializer):
+    vara = serializers.CharField()
+
+
+class TaxaTribunalPorAnoSerializer(TaxaTribunalSerializer):
+    ano = serializers.IntegerField()
+
+
+class ForaDaTaxaSerializer(serializers.Serializer):
+    motivo = serializers.CharField()
+    total = serializers.IntegerField()
+
+
+class ValidacaoTribunalSerializer(serializers.Serializer):
+    rotulo_conferido = serializers.BooleanField()
+    motivo = serializers.CharField(allow_null=True)
+    gold_set = serializers.DictField(allow_null=True)
+    cobertura_medida = serializers.BooleanField()
+
+
+class OpcoesTribunalSerializer(serializers.Serializer):
+    temas = OpcaoDeAreaSerializer(many=True)
+    varas = serializers.ListField(child=serializers.CharField())
+    anos = serializers.ListField(child=serializers.IntegerField())
+
+
+class FonteTribunalSerializer(serializers.Serializer):
+    origem = serializers.CharField()
+    inicio = serializers.DateField(allow_null=True)
+    fim = serializers.DateField(allow_null=True)
+    versao = serializers.CharField()
+    importado_em = serializers.DateTimeField()
+
+
+class FiltrosTribunalSerializer(serializers.Serializer):
+    tema = serializers.CharField()
+    vara = serializers.CharField(required=False)
+    ano = serializers.IntegerField(required=False)
+
+
+class JurimetriaTribunalRespostaSerializer(serializers.Serializer):
+    disponivel = serializers.BooleanField(help_text="Falso enquanto a base não for importada.")
+    filtros = FiltrosTribunalSerializer(required=False)
+    geral = TaxaTribunalSerializer(required=False)
+    fora_da_taxa = ForaDaTaxaSerializer(many=True, required=False)
+    por_vara = TaxaTribunalPorVaraSerializer(many=True, required=False)
+    por_ano = TaxaTribunalPorAnoSerializer(many=True, required=False)
+    validacao = ValidacaoTribunalSerializer(required=False)
+    opcoes = OpcoesTribunalSerializer(required=False)
+    fonte = FonteTribunalSerializer(required=False)
+    populacao = serializers.CharField(required=False)
+    criterio = serializers.CharField(required=False)
+    piso_amostra = serializers.IntegerField(required=False)
+
+
+class DecisaoTribunalSerializer(serializers.Serializer):
+    numero_cnj = serializers.CharField()
+    vara = serializers.CharField()
+    data_sentenca = serializers.DateField(allow_null=True)
+    resultado = serializers.CharField()
+    grau = serializers.IntegerField(allow_null=True)
+    mecanismo = serializers.CharField(help_text="Como o resultado foi lido pela regra.")
+    trecho = serializers.CharField(help_text="Trecho do dispositivo, sem nome de parte.")
+
+
+class JurimetriaTribunalDecisoesRespostaSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    exibidos = serializers.IntegerField(help_text="A lista é cortada em 200 itens.")
+    contagem = serializers.DictField(child=serializers.IntegerField())
+    decisoes = DecisaoTribunalSerializer(many=True)
 
 
 class MetricasSerializer(serializers.Serializer):

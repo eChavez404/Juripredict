@@ -10,16 +10,12 @@ from http.client import HTTPException
 from urllib import error, request
 
 from django.conf import settings
-from django.core import signing
 from rest_framework.exceptions import APIException, NotFound
 
 # Abaixo dos 15 s do frontend. O agente responde na hora: a análise corre depois, por consulta.
 TIMEOUT_SEGUNDOS = 10
 # Curta, para não prender um worker do gunicorn enquanto o agente liga: quem insiste é a página.
 TIMEOUT_OPCOES_SEGUNDOS = 3
-SAL = "agente.analise"
-# Os resultados ficam na memória do agente; um dia depois não há o que consultar.
-VALIDADE_SEGUNDOS = 24 * 3600
 NAO_ENCONTRADA = "Análise não encontrada. Envie o caso de novo."
 
 
@@ -81,20 +77,3 @@ def iniciar(caso):
 
 def consultar(job_id):
     return _analise(_chamar(f"analyses/{job_id}"))
-
-
-def assinar(job_id, escritorio, usuario):
-    """Prende a análise a quem a pediu sem precisar de tabela: o agente não conhece usuários."""
-    return signing.dumps([job_id, str(escritorio.pk), usuario.pk], salt=SAL)
-
-
-def conferir(analise_id, escritorio, usuario):
-    try:
-        job_id, escritorio_id, usuario_id = signing.loads(
-            analise_id, salt=SAL, max_age=VALIDADE_SEGUNDOS
-        )
-    except signing.BadSignature:
-        raise NotFound(NAO_ENCONTRADA) from None
-    if (escritorio_id, usuario_id) != (str(escritorio.pk), usuario.pk):
-        raise NotFound(NAO_ENCONTRADA)
-    return job_id

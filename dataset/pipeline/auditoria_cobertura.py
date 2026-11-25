@@ -25,6 +25,40 @@ import random
 import re
 import sys
 from math import comb, sqrt
+from pathlib import Path
+
+# 13875 = "Adicional de Insalubridade", confirmado contra a API (1663 nao existe neste indice).
+ASSUNTO_INSALUBRIDADE = 13875
+FILTRO_PRIMEIRO_GRAU = {"term": {"grau.keyword": "G1"}}
+
+
+def carregar_env():
+    """Le o .env da raiz do projeto, sem dependencia externa. Nao sobrescreve o ambiente."""
+    for pasta in Path(__file__).resolve().parents:
+        env = pasta / ".env"
+        if not env.exists():
+            continue
+        for linha in env.read_text(encoding="utf-8").splitlines():
+            chave, igual, valor = linha.strip().partition("=")
+            if igual and not chave.startswith("#") and chave.strip() not in os.environ:
+                valor = valor.strip().strip('"').strip("'")
+                if valor:
+                    os.environ[chave.strip()] = valor
+        return
+
+
+def mascarar_cnj(numero):
+    """00177638620265160016 -> 0017763-86.2026.5.16.0016
+
+    O DataJud devolve o numero sem mascara; o FALCAO usa a forma mascarada. Sem isto, a
+    uniao das duas bases da zero interseccao.
+    """
+    if not numero:
+        return None
+    d = re.sub(r"\D", "", str(numero))
+    if len(d) != 20:
+        return str(numero)
+    return f"{d[:7]}-{d[7:9]}.{d[9:13]}.{d[13]}.{d[14:16]}.{d[16:]}"
 
 PISO_CELULA = 0.70   # abaixo disso a celula nao sustenta taxa-base publicavel
 
@@ -57,8 +91,6 @@ def buscar_frame(assunto, de, ate, teto):
     """Baixa o frame do DataJud com paginacao search_after."""
     import requests
 
-    from extrair_llm import carregar_env
-    from coletar_datajud import ASSUNTO_INSALUBRIDADE, FILTRO_PRIMEIRO_GRAU
     carregar_env()
 
     chave = os.environ.get("DATAJUD_API_KEY", "").strip()
@@ -120,7 +152,6 @@ def amostrar(n, assunto, de, ate, teto, saida, semente):
         w = csv.writer(f)
         w.writerow(["numero_cnj", "ano", "orgao_julgador", "desfecho_datajud",
                     "no_corpus_local", "encontrado_no_falcao", "observacao"])
-        from coletar_datajud import mascarar_cnj
         for p, desfecho in amostra:
             w.writerow([
                 mascarar_cnj(p.get("numeroProcesso")),

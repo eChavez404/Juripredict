@@ -7,7 +7,7 @@ import type { JurimetriaData } from '../types';
 import Jurimetria from './Jurimetria';
 
 vi.mock('../services/juripredict', () => ({
-  jurimetriaService: { get: vi.fn(), processos: vi.fn(), exportar: vi.fn() },
+  jurimetriaService: { get: vi.fn(), processos: vi.fn(), exportar: vi.fn(), tribunal: vi.fn(), decisoesTribunal: vi.fn() },
 }));
 
 const base: JurimetriaData = {
@@ -37,11 +37,15 @@ const comCapability = {
 
 const renderPage = (dados: JurimetriaData) => {
   vi.mocked(jurimetriaService.get).mockResolvedValue(dados);
-  return render(
+  vi.mocked(jurimetriaService.tribunal).mockResolvedValue({ disponivel: false });
+  const tela = render(
     <MemoryRouter>
       <AuthContext.Provider value={comCapability}><Jurimetria /></AuthContext.Provider>
     </MemoryRouter>,
   );
+  // a página abre na jurimetria do tribunal; estes testes são da carteira
+  fireEvent.click(screen.getByRole('button', { name: 'Seu escritório' }));
+  return tela;
 };
 
 describe('Jurimetria', () => {

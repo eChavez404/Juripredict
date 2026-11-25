@@ -1,9 +1,11 @@
 import api from './api';
 import type {
-  AgenteAnalise,
-  AgenteCaso,
+  AgenteCasoNovo,
   AgenteOpcoes,
+  DecisoesTribunal,
   AndamentosResposta,
+  CasoEstudo,
+  CasoEstudoResumo,
   Cliente,
   ClientePayload,
   DashboardData,
@@ -11,6 +13,7 @@ import type {
   EventoAgenda,
   JurimetriaData,
   JurimetriaProcessos,
+  JurimetriaTribunal,
   Pendencias,
   PrazoCalculado,
   PrazoTipo,
@@ -92,11 +95,19 @@ export const dashboardService = {
 export type FiltrosJurimetria = { area?: string; ano?: string; vara?: string; resultado?: string };
 
 // Campos vazios ficam fora da URL: `?area=` seria um filtro por área em branco.
-const semVazios = (filtros: FiltrosJurimetria) => Object.fromEntries(
+const semVazios = (filtros: Record<string, string | undefined>) => Object.fromEntries(
   Object.entries(filtros).filter(([, valor]) => valor),
 );
 
+export type FiltrosTribunal = { tema: string; vara?: string; ano?: string; resultado?: string };
+
 export const jurimetriaService = {
+  tribunal: async (filtros: FiltrosTribunal) => (
+    await api.get<JurimetriaTribunal>('/jurimetria/tribunal/', { params: semVazios(filtros) })
+  ).data,
+  decisoesTribunal: async (filtros: FiltrosTribunal) => (
+    await api.get<DecisoesTribunal>('/jurimetria/tribunal/decisoes/', { params: semVazios(filtros) })
+  ).data,
   get: async (filtros: FiltrosJurimetria = {}) => (
     await api.get<JurimetriaData>('/jurimetria/', { params: semVazios(filtros) })
   ).data,
@@ -119,10 +130,16 @@ export const jurimetriaService = {
 
 export const agenteService = {
   opcoes: async () => (await api.get<AgenteOpcoes>('/agente/opcoes/')).data,
-  iniciar: async (caso: AgenteCaso) => (await api.post<AgenteAnalise>('/agente/analises/', caso)).data,
-  consultar: async (id: string) => (
-    await api.get<AgenteAnalise>(`/agente/analises/${encodeURIComponent(id)}/`)
+  casos: async () => (await api.get<CasoEstudoResumo[]>('/agente/casos/')).data,
+  caso: async (id: number) => (await api.get<CasoEstudo>(`/agente/casos/${id}/`)).data,
+  criar: async (caso: AgenteCasoNovo) => (await api.post<CasoEstudo>('/agente/casos/', caso)).data,
+  atualizar: async (id: number, dados: Pick<CasoEstudo, 'fase' | 'orgao_julgador' | 'provas'>) => (
+    await api.patch<CasoEstudo>(`/agente/casos/${id}/`, dados)
   ).data,
+  enviar: async (id: number, texto: string) => (
+    await api.post<CasoEstudo>(`/agente/casos/${id}/mensagens/`, { texto })
+  ).data,
+  excluir: async (id: number) => { await api.delete(`/agente/casos/${id}/`); },
 };
 
 export const prazoService = {
