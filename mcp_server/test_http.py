@@ -81,6 +81,19 @@ class VerificadorTests(unittest.TestCase):
         self.assertEqual(caido._cache, {})  # a negativa por queda não fica guardada
 
 
+class EnderecoDaIntrospeccaoTests(unittest.TestCase):
+    def _url(self, **extra):
+        opcoes = server.autenticacao_oauth(url_mcp=URL_MCP, emissor=EMISSOR, segredo=SEGREDO, **extra)
+        return opcoes["token_verifier"]._url, str(opcoes["auth"].issuer_url).rstrip("/")
+
+    def test_pergunta_por_dentro_mas_anuncia_o_emissor_publico(self):
+        interna = "http://127.0.0.1:8000/oauth/introspeccao"
+        self.assertEqual(self._url(url_introspeccao=interna), (interna, EMISSOR))
+
+    def test_sem_endereco_interno_usa_o_do_emissor(self):
+        self.assertEqual(self._url(), (f"{EMISSOR}/oauth/introspeccao", EMISSOR))
+
+
 class ServidorHttpTests(unittest.TestCase):
     def _app(self, **extra):
         verificador, _ = _verificador(**extra)

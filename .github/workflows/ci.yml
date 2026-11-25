@@ -153,3 +153,7 @@ jobs:
         run: docker build --tag juripredict:ci .
       - name: Conferir o agente dentro da imagem
         run: docker run --rm --workdir /srv/agente --env LLM_MODEL=x:y juripredict:ci .venv/bin/python -c "import app.main"
+      - name: Conferir o servidor MCP dentro da imagem
+        run: docker run --rm --workdir /srv/mcp juripredict:ci .venv/bin/python -c "import server"
+      - name: Conferir a configuração do nginx
+        run: docker run --rm juripredict:ci sh -c "sed s/__PORTA__/8080/ /app/backend/nginx.conf > /tmp/nginx.conf && nginx -t -e stderr -c /tmp/nginx.conf"

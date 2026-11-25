@@ -27,6 +27,15 @@ COPY agente/app ./app
 RUN .venv/bin/python -m compileall -q app
 
 
+FROM python:3.12-slim AS mcp-build
+
+WORKDIR /srv/mcp
+COPY mcp_server/requirements.txt ./
+RUN python -m venv .venv && .venv/bin/pip install --no-cache-dir -r requirements.txt
+COPY mcp_server/server.py mcp_server/cliente_api.py mcp_server/verificador.py ./
+RUN .venv/bin/python -m compileall -q *.py
+
+
 FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -36,7 +45,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app/backend
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y libpq5 \
+    && apt-get install --no-install-recommends -y libpq5 nginx-light \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt ./requirements.txt
@@ -45,6 +54,7 @@ RUN python -m pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./
 COPY --from=frontend-build /build/frontend/dist ./juripredict/frontend_dist
 COPY --from=agente-build /srv/agente /srv/agente
+COPY --from=mcp-build /srv/mcp /srv/mcp
 
 WORKDIR /app/backend/juripredict
 RUN DJANGO_DEBUG=true \

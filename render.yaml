@@ -38,15 +38,9 @@ services:
         value: https://juripredict.onrender.com
       - key: CORS_ALLOW_ALL_ORIGINS
         value: "false"
-      # Conector MCP remoto (accounts/oauth.py): o servidor MCP que aceita os tokens e o
-      # segredo com que ele pergunta se um token vale. O mesmo segredo vai para o
-      # juripredict-mcp, abaixo.
-      - key: OAUTH_RECURSOS
-        value: https://juripredict-mcp.onrender.com/mcp
-      - key: OAUTH_SEGREDO_INTROSPECCAO
-        generateValue: true
-      # Agente de IA (agente/): roda neste mesmo serviço (backend/iniciar.sh). Sem a
-      # GOOGLE_API_KEY, a análise avisa que a IA não está configurada.
+      # O agente de IA (agente/) e o servidor MCP (mcp_server/) rodam neste mesmo serviço, que
+      # gera os próprios segredos (backend/iniciar.sh). O conector MCP é a FRONTEND_URL + /mcp.
+      # Sem a GOOGLE_API_KEY, a análise avisa que a IA não está configurada.
       - key: GOOGLE_API_KEY
         sync: false
       # Sem chave e índice, o agente responde só pelos critérios e avisa.
@@ -101,32 +95,6 @@ services:
 
   # Tarefas agendadas. Cron Job do Render não existe no plano gratuito (mínimo: starter).
   # Reaproveitam do web os segredos que ele já guarda.
-
-  # Conector MCP remoto: o advogado cola esta URL no Claude (ou o agente do JuriPredict
-  # se conecta) e autoriza na tela /autorizar do app. Ver mcp_server/README.md.
-  - type: web
-    name: juripredict-mcp
-    runtime: docker
-    plan: free
-    region: virginia
-    branch: develop
-    dockerfilePath: ./mcp_server/Dockerfile
-    dockerContext: ./mcp_server
-    healthCheckPath: /.well-known/oauth-protected-resource/mcp
-    autoDeployTrigger: commit
-    envVars:
-      - key: JURIPREDICT_MCP_URL
-        value: https://juripredict-mcp.onrender.com/mcp
-      - key: JURIPREDICT_API_URL
-        value: https://juripredict.onrender.com/api/v1
-      - key: JURIPREDICT_EMISSOR
-        value: https://juripredict.onrender.com
-      - key: JURIPREDICT_SEGREDO_INTROSPECCAO
-        fromService:
-          type: web
-          name: juripredict
-          envVarKey: OAUTH_SEGREDO_INTROSPECCAO
-
   - type: cron
     name: juripredict-lembretes
     runtime: docker

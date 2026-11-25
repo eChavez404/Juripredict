@@ -199,6 +199,15 @@ escritório e trocar a senha também cortam o acesso. Na auditoria: `oauth.conex
 | `OAUTH_SEGREDO_INTROSPECCAO` | segredo que o serviço MCP usa para perguntar se um token vale |
 | `OAUTH_EMISSOR` | URL pública do app; padrão `FRONTEND_URL` |
 
+Na imagem de produção, o `iniciar.sh` define as três: o recurso é a `FRONTEND_URL` + `/mcp`, e o
+segredo é novo a cada partida.
+
+## Um contêiner só
+
+A imagem da raiz sobe quatro processos: o nginx na porta pública (`nginx.conf`), o site no
+gunicorn, o agente de IA e o servidor MCP, estes três só em `127.0.0.1`. O `iniciar.sh` liga os
+outros depois do site, com `env -i`, e o `manter.sh` reinicia o que cair.
+
 ## Documentos do processo
 
 Cada processo aceita até `DOCUMENTOS_MAX_POR_PROCESSO` anexos (50). O conteúdo é validado

@@ -1,23 +1,44 @@
 #!/bin/sh
-# Sobe o site e o agente de IA no mesmo contêiner. Chamado pelo Dockerfile da raiz.
+# Sobe tudo no mesmo contêiner: nginx (porta pública), site, agente de IA e servidor MCP.
+# Só o nginx é acessível de fora. Chamado pelo Dockerfile da raiz.
 set -e
 
 python manage.py migrate --noinput
 
-# O agente só atende neste contêiner, com um segredo novo a cada partida: não há o que
-# configurar, e um valor antigo no painel não atrapalha.
-export AGENTE_URL=http://127.0.0.1:8001
-AGENTE_SEGREDO="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
-export AGENTE_SEGREDO
+segredo() { python -c 'import secrets; print(secrets.token_urlsafe(32))'; }
 
-# env -i: o agente recebe só esta lista, sem as chaves do Django nem a do banco (AST06). Vale
-# também para o laço que o reinicia se ele cair. Ele só liga depois do primeiro worker do site
-# (gunicorn.conf.py): juntos, com 0,1 CPU, atrasariam a volta da hibernação em 20 segundos.
+# Endereços internos e segredos novos a cada partida: não há o que configurar, e um valor
+# antigo no painel da hospedagem não atrapalha.
+AGENTE_URL=http://127.0.0.1:8001
+AGENTE_SEGREDO="$(segredo)"
+OAUTH_SEGREDO_INTROSPECCAO="$(segredo)"
+export AGENTE_URL AGENTE_SEGREDO OAUTH_SEGREDO_INTROSPECCAO
+
+# O endereço público do site é também o do conector MCP e o do emissor dos tokens.
+BASE="${FRONTEND_URL:-${RENDER_EXTERNAL_HOSTNAME:+https://$RENDER_EXTERNAL_HOSTNAME}}"
+BASE="${BASE%/}"
+if [ -n "$BASE" ]; then
+    OAUTH_EMISSOR="$BASE"
+    OAUTH_RECURSOS="$BASE/mcp"
+    export OAUTH_EMISSOR OAUTH_RECURSOS
+fi
+# O MCP consulta a API por dentro, sem sair para a internet.
+DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS:+$DJANGO_ALLOWED_HOSTS,}127.0.0.1"
+export DJANGO_ALLOWED_HOSTS
+
+# env -i: cada processo recebe só a própria lista, sem as chaves do Django nem a do banco
+# (AST06). Eles só ligam depois do primeiro worker do site (gunicorn.conf.py): juntos, com
+# 0,1 CPU, atrasariam a volta da hibernação.
 rm -f /tmp/site-pronto
+LIMPO="env -i PATH=$PATH HOME=/tmp PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1"
+MANTER="sh /app/backend/manter.sh"
+
+sed "s/__PORTA__/${PORT:-8080}/" /app/backend/nginx.conf > /tmp/nginx.conf
+$LIMPO $MANTER nginx -e stderr -c /tmp/nginx.conf &
+
 (
     cd /srv/agente
-    exec env -i \
-        PATH="$PATH" HOME=/tmp PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
+    exec $LIMPO \
         HOST=127.0.0.1 PORT=8001 \
         AGENTE_SEGREDO="$AGENTE_SEGREDO" \
         LLM_MODEL="${LLM_MODEL:-google_genai:gemini-3.8-flash}" \
@@ -30,7 +51,21 @@ rm -f /tmp/site-pronto
         LANGFUSE_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY:-}" \
         LANGFUSE_SECRET_KEY="${LANGFUSE_SECRET_KEY:-}" \
         LANGFUSE_BASE_URL="${LANGFUSE_BASE_URL:-https://us.cloud.langfuse.com}" \
-        sh -c 'until [ -e /tmp/site-pronto ]; do sleep 1; done; while :; do .venv/bin/python -m app.main; echo "Agente encerrou; reiniciando em 10 s."; sleep 10; done'
+        $MANTER .venv/bin/python -m app.main
 ) &
 
-exec gunicorn --bind "0.0.0.0:${PORT:-8080}" --workers "${WEB_CONCURRENCY:-2}" --timeout 60 config.wsgi:application
+if [ -n "$BASE" ]; then
+    (
+        cd /srv/mcp
+        exec $LIMPO \
+            HOST=127.0.0.1 PORT=8002 \
+            JURIPREDICT_MCP_URL="$BASE/mcp" \
+            JURIPREDICT_EMISSOR="$BASE" \
+            JURIPREDICT_API_URL=http://127.0.0.1:8000/api/v1 \
+            JURIPREDICT_INTROSPECCAO_URL=http://127.0.0.1:8000/oauth/introspeccao \
+            JURIPREDICT_SEGREDO_INTROSPECCAO="$OAUTH_SEGREDO_INTROSPECCAO" \
+            $MANTER .venv/bin/python server.py
+    ) &
+fi
+
+exec gunicorn --bind 127.0.0.1:8000 --workers "${WEB_CONCURRENCY:-2}" --timeout 60 config.wsgi:application

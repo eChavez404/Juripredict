@@ -312,7 +312,7 @@ redefinido antes de o número significar alguma coisa.
 | Andamento automático dos processos (DataJud) | implementado e testado; avisa por e-mail as novidades; depende da chave do DataJud e do cron; TRTs e TRFs |
 | Documentação da API | OpenAPI 3 em `backend/openapi.yaml`, conferida por teste; Swagger UI em `/api/docs/` só em desenvolvimento |
 | Papéis aplicados no servidor | estagiário não vê valor da causa nem jurimetria, vê CPF/CNPJ mascarado e não exclui; regras padrão a confirmar com o escritório |
-| Servidor MCP somente leitura (`mcp_server/`) | implementado e testado ponta a ponta; local com token de API ou hospedado como conector remoto, autorizado por OAuth 2.1 numa tela do app; rotas fixas e toda consulta auditada |
+| Servidor MCP somente leitura (`mcp_server/`) | implementado e testado ponta a ponta; local com token de API ou como conector remoto em `/mcp`, no mesmo serviço do site, autorizado por OAuth 2.1 numa tela do app; rotas fixas e toda consulta auditada |
 | Agente de IA (`agente/`) | página no app, atrás do login, e serviço interno chamado só pelo backend; testado ponta a ponta com IA e base simuladas; em produção roda dentro do serviço do site; a base de casos no Pinecone ainda não existe |
 | Vários documentos por processo | implementado e testado; até 50 por processo; depende do R2 em produção |
 | LGPD: aceite dos termos, exportação e exclusão de conta | implementado e testado; texto jurídico em revisão |

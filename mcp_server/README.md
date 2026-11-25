@@ -14,11 +14,11 @@ Há dois modos:
 
 ## Conector remoto (para o usuário final)
 
-Endereço: **`https://juripredict-mcp.onrender.com/mcp`**
+Endereço: **`https://juripredict.onrender.com/mcp`**
 
 - **Claude (claude.ai ou app):** Configurações > Conectores > Adicionar conector
   personalizado, cole o endereço e clique em Conectar.
-- **Claude Code:** `claude mcp add --transport http juripredict https://juripredict-mcp.onrender.com/mcp`,
+- **Claude Code:** `claude mcp add --transport http juripredict https://juripredict.onrender.com/mcp`,
   depois `/mcp` para autorizar.
 
 O cliente abre a tela **/autorizar** do JuriPredict: a pessoa entra (se ainda não estiver
@@ -34,16 +34,20 @@ leva a pessoa a `/autorizar` com PKCE S256 e `resource` igual ao endereço acima
 código em `/oauth/token`, guarda o refresh token e chama este servidor com
 `Authorization: Bearer <access_token>`. O token só enxerga o escritório escolhido.
 
-Variáveis do modo HTTP (no Render, em `render.yaml`):
+Em produção, este servidor roda no mesmo contêiner do site: o nginx (`backend/nginx.conf`)
+recebe a porta pública e manda só o `/mcp` e os metadados dele para cá, e o
+`backend/iniciar.sh` define as variáveis do modo HTTP, sem nada a preencher na hospedagem:
 
 | Variável | Uso |
 |---|---|
 | `JURIPREDICT_MCP_URL` | o próprio endereço público; ativa o modo HTTP |
-| `JURIPREDICT_API_URL` | API do JuriPredict |
+| `JURIPREDICT_API_URL` | API do JuriPredict; em produção, pelo endereço interno |
 | `JURIPREDICT_EMISSOR` | servidor de autorização (o app) |
-| `JURIPREDICT_SEGREDO_INTROSPECCAO` | o mesmo `OAUTH_SEGREDO_INTROSPECCAO` do backend |
+| `JURIPREDICT_INTROSPECCAO_URL` | introspecção pelo endereço interno; sem ela, usa a do emissor |
+| `JURIPREDICT_SEGREDO_INTROSPECCAO` | o mesmo `OAUTH_SEGREDO_INTROSPECCAO` do backend, novo a cada partida |
+| `HOST` e `PORT` | onde atende; em produção, `127.0.0.1:8002` |
 
-No plano gratuito o serviço hiberna sem uso: a primeira chamada pode levar até um minuto.
+No plano gratuito o serviço hiberna sem uso: a primeira chamada pode levar mais de um minuto.
 
 ## Ferramentas
 

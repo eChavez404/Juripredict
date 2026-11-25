@@ -173,13 +173,14 @@ def criar_servidor(**autenticacao):
     return servidor
 
 
-def autenticacao_oauth(*, url_mcp, emissor, segredo):
+def autenticacao_oauth(*, url_mcp, emissor, segredo, url_introspeccao=""):
     """Servidor de recursos OAuth: o SDK publica os metadados (RFC 9728) e responde 401
-    apontando para o JuriPredict; o verificador confere cada token por introspecção."""
+    apontando para o JuriPredict; o verificador confere cada token por introspecção, no
+    endereço interno quando ele é informado."""
     emissor = emissor.rstrip("/")
     return {
         "token_verifier": VerificadorJuriPredict(
-            url_introspeccao=f"{emissor}/oauth/introspeccao", segredo=segredo
+            url_introspeccao=url_introspeccao or f"{emissor}/oauth/introspeccao", segredo=segredo
         ),
         "auth": AuthSettings(
             issuer_url=emissor,
@@ -196,6 +197,7 @@ mcp = criar_servidor(**(
         url_mcp=URL_MCP,
         emissor=os.environ.get("JURIPREDICT_EMISSOR", ""),
         segredo=os.environ.get("JURIPREDICT_SEGREDO_INTROSPECCAO", ""),
+        url_introspeccao=os.environ.get("JURIPREDICT_INTROSPECCAO_URL", ""),
     )
     if URL_MCP else {}
 ))
@@ -205,7 +207,8 @@ if __name__ == "__main__":
     if URL_MCP:
         mcp.run(
             "streamable-http",
-            host="0.0.0.0",
+            # quem atende de fora é o nginx do contêiner (backend/nginx.conf)
+            host=os.environ.get("HOST", "127.0.0.1"),
             port=int(os.environ.get("PORT", "8000")),
             stateless_http=True,
             json_response=True,
