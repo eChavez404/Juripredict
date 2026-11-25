@@ -164,3 +164,56 @@ export type Pendencias = {
   proximos: EventoAgenda[];
   andamentos_recentes: Array<{ id: number; processo: number; processo_numero: string; data_hora: string; nome: string }>;
 };
+
+// Agente de IA: espelha agente/app/agents/analista/schema.py.
+export type AgenteOpcao = { value: string; label: string };
+export type AgenteOpcoes = { temas: AgenteOpcao[]; fases: AgenteOpcao[]; provas: AgenteOpcao[] };
+
+export type AgenteCaso = {
+  tema: string;
+  fase: string;
+  relato: string;
+  provas: string[];
+  orgao_julgador: string;
+  duvida: string;
+};
+
+export type AgenteSituacao = 'atendido' | 'parcial' | 'ausente' | 'nao_aplicavel';
+
+export type AgenteResultado = {
+  analise: {
+    titulo: string;
+    resumo: string;
+    criterios: Array<{ criterio_id: string; situacao: AgenteSituacao; evidencia: string }>;
+    melhorias: Array<{ criterio_id: string; acao: string; justificativa: string; caso_ids: string[] }>;
+    casos_proximos: Array<{ caso_id: string; semelhancas: string; diferencas: string }>;
+    riscos: string[];
+  };
+  catalogo: { versao: string; criterios: Array<{ id: string; nome: string; fundamentos: string[] }> };
+  medicao: {
+    indice_atual: number;
+    indice_potencial: number;
+    ganho: number;
+    alertas: string[];
+    pontos_fortes: string[];
+  };
+  casos: Array<{
+    id_sentenca: string;
+    numero_cnj: string | null;
+    tipo_documento: string | null;
+    orgao_julgador: string | null;
+    data_julgamento: string | null;
+    resultado: string | null;
+    similaridade: number;
+  }>;
+  suposicoes: string[];
+  disclaimer: string;
+};
+
+export type AgenteAnalise = {
+  id: string;
+  status: 'running' | 'done' | 'error';
+  step: string | null;
+  result: AgenteResultado | null;
+  error: string | null;
+};

@@ -9,6 +9,7 @@ export const CAPABILITIES = {
   documentoClienteVisualizar: 'clientes.documento.ler',
   processosExcluir: 'processos.excluir',
   clientesExcluir: 'clientes.excluir',
+  agenteUsar: 'agente.usar',
 } as const;
 
 export type Capability = string;

@@ -22,6 +22,8 @@ from accounts.tokens_api import revogar_tokens_api
 from auditlog.mixins import AuditoriaCrudMixin
 from auditlog.services import registrar_evento_auditoria
 from config.openapi import (
+    AgenteAnaliseRespostaSerializer,
+    AgenteOpcoesRespostaSerializer,
     AndamentosRespostaSerializer,
     DashboardRespostaSerializer,
     DetalheSerializer,
@@ -35,6 +37,7 @@ from config.openapi import (
 from organizations.context import EscritorioContextMixin
 from organizations.permissions import TemContextoEscritorio, exige_capability
 
+from . import agente
 from .andamentos import sincronizar_processo
 from .documentos import anexar_documento, remover_documento
 from .datajud import DatajudErro
@@ -52,6 +55,7 @@ from .jurimetria import (
 from .models import Andamento, Cliente, DocumentoProcesso, EventoAgenda, Processo
 from .prazos import calcular_prazo
 from .serializers import (
+    AgenteCasoSerializer,
     AlterarSenhaSerializer,
     AndamentoRecenteSerializer,
     AndamentoSerializer,
@@ -70,6 +74,8 @@ FILTROS_JURIMETRIA = [
     OpenApiParameter("area", str, enum=[valor for valor, _ in Processo.AREA_CHOICES]),
     OpenApiParameter("ano", str, description="Ano de distribuição, ou sem_data."),
 ]
+
+PERMISSOES_AGENTE = [IsAuthenticated, TemContextoEscritorio, exige_capability("agente.usar")]
 
 MESES = ("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez")
 DIAS = ("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
@@ -591,3 +597,58 @@ class PendenciasAPIView(EscritorioContextMixin, APIView):
                 ).data,
             }
         )
+
+
+class AgenteOpcoesAPIView(APIView):
+    permission_classes = PERMISSOES_AGENTE
+
+    @extend_schema(responses={200: AgenteOpcoesRespostaSerializer, 503: DetalheSerializer})
+    def get(self, request):
+        return Response(agente.opcoes())
+
+
+class AgenteAnalisesAPIView(EscritorioContextMixin, APIView):
+    """Começa uma análise. O caso não é gravado aqui; a auditoria guarda só tema e fase."""
+
+    permission_classes = PERMISSOES_AGENTE
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "agente"
+
+    @extend_schema(
+        request=AgenteCasoSerializer,
+        responses={
+            202: AgenteAnaliseRespostaSerializer,
+            400: DetalheSerializer,
+            503: DetalheSerializer,
+        },
+    )
+    def post(self, request):
+        caso = AgenteCasoSerializer(data=request.data)
+        caso.is_valid(raise_exception=True)
+        job_id, analise = agente.iniciar(caso.validated_data)
+        escritorio = self.get_escritorio()
+        registrar_evento_auditoria(
+            escritorio=escritorio,
+            ator=request.user,
+            acao="agente.analise_iniciada",
+            recurso_tipo="agente",
+            recurso_id=job_id,
+            alteracoes={campo: caso.validated_data[campo] for campo in ("tema", "fase")},
+        )
+        analise_id = agente.assinar(job_id, escritorio, request.user)
+        return Response({"id": analise_id, **analise}, status=status.HTTP_202_ACCEPTED)
+
+
+class AgenteAnaliseAPIView(EscritorioContextMixin, APIView):
+    permission_classes = PERMISSOES_AGENTE
+
+    @extend_schema(
+        responses={
+            200: AgenteAnaliseRespostaSerializer,
+            404: DetalheSerializer,
+            503: DetalheSerializer,
+        }
+    )
+    def get(self, request, analise_id):
+        job_id = agente.conferir(analise_id, self.get_escritorio(), request.user)
+        return Response({"id": analise_id, **agente.consultar(job_id)})

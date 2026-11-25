@@ -330,3 +330,25 @@ def test_varredura_cobre_o_periodo_sem_buraco_nem_sobreposicao():
         (date(2024, 1, 15), date(2024, 1, 31)),
         (date(2024, 2, 1), date(2024, 2, 29)),
         (date(2024, 3, 1), date(2024, 3, 10))]
+
+
+def test_rodada_seguinte_nao_conta_de_novo_nem_o_mes_vazio(tmp_path, monkeypatch):
+    from collector import varrer
+
+    chamadas = []
+
+    def buscar_pagina(self, consulta, page, size=PAGE_SIZE_MAX):
+        chamadas.append((consulta.data_inicio, page))
+        n = 0 if consulta.data_inicio.startswith("2025-02") else 3
+        docs = [doc(f"{consulta.data_inicio}-{i}") for i in range(n)] if page == 0 else []
+        return Pagina.de_json(page, {"documentos": docs, "quantidadeTotal": n})
+
+    monkeypatch.setattr(varrer.ClienteFalcao, "buscar_pagina", buscar_pagina)
+    monkeypatch.setattr(varrer, "sessao_http", lambda sid: (None, "_abc123"))
+    args = ["--query", "x", "--date-start", "2025-01-01", "--date-end", "2025-02-28",
+            "--data-dir", str(tmp_path)]
+
+    assert varrer.main(args) == 0
+    chamadas.clear()
+    assert varrer.main(args) == 0
+    assert chamadas == []  # cada requisição da cota diária conta
