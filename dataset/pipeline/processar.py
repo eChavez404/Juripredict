@@ -16,7 +16,6 @@ Corpus da jurimetria do tribunal (so as sentencas, os dois temas):
 
 import argparse
 import hashlib
-import json
 import os
 import re
 import sqlite3
@@ -25,7 +24,7 @@ from datetime import datetime
 from pathlib import Path
 
 from cortar_secoes import cortar
-from rotular_por_regra import rotular, resultado_global, CORRIGE_COERENCIA
+from rotular_por_regra import rotular, CORRIGE_COERENCIA
 
 VERSAO_REGRA = "regra-2026.09"
 

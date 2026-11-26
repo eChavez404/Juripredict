@@ -27,7 +27,8 @@ O JuriPredict responde isso para o **adicional de insalubridade e o de periculos
   sustentam cada número. A aba "Seu escritório" faz o mesmo sobre a carteira cadastrada.
 - **Agente de IA:** uma conversa sobre o caso. A cada fato ou prova acrescentada, o agente avalia
   o caso contra os critérios do tema, mostra o índice e a evolução dele, aponta o que melhorar,
-  pergunta o que falta e traz casos parecidos do TRT-16, deferidos e indeferidos.
+  pergunta o que falta e traz casos parecidos do TRT-16, deferidos e indeferidos. O caso pode ser
+  vinculado a um processo do escritório, e o contrato e os demais documentos entram na análise.
 - **Conector MCP:** o Claude e outros assistentes consultam os dados do escritório, somente
   leitura, autorizados por OAuth numa tela do app (`/mcp`).
 
@@ -42,7 +43,8 @@ O JuriPredict responde isso para o **adicional de insalubridade e o de periculos
   demonstrado, e é calculado em código, não pela IA.
 
 Dados pessoais das partes não viram variável nem aparecem na tela: os trechos de decisões saem
-sem nome de parte, e CPF, CNPJ, PIS, e-mail e telefone são mascarados antes de qualquer envio à IA.
+sem nome de parte, e documentos pessoais, contatos, endereços, dados bancários e nomes qualificados
+(como num contrato) são mascarados antes de qualquer envio à IA.
 
 ## Arquitetura
 

@@ -308,6 +308,10 @@ class CasoEstudo(models.Model):
     )
     # vazio até a primeira análise, que sugere um título
     titulo = models.CharField(max_length=120, blank=True)
+    # o processo do escritório cujo cadastro e documentos entram no caso, a cada mensagem
+    processo = models.ForeignKey(
+        Processo, on_delete=models.SET_NULL, related_name="casos_estudo", null=True, blank=True
+    )
     tema = models.CharField(max_length=20, choices=DecisaoTribunal.TEMAS)
     fase = models.CharField(max_length=30)
     orgao_julgador = models.CharField(max_length=200, blank=True)
@@ -344,6 +348,8 @@ class MensagemCaso(models.Model):
     erro = models.CharField(max_length=300, blank=True)
     indice_atual = models.PositiveSmallIntegerField(null=True, blank=True)
     indice_potencial = models.PositiveSmallIntegerField(null=True, blank=True)
+    # na mensagem do advogado: o que dos documentos do processo vinculado a análise leu
+    documentos_lidos = models.JSONField(default=list, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:

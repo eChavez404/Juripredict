@@ -9,8 +9,8 @@ import PageHeader from '../components/ui/PageHeader';
 import { useAuth } from '../contexts/auth';
 import { CAPABILITIES } from '../features/escritorios/types';
 import { getApiError } from '../services/api';
-import { agenteService } from '../services/juripredict';
-import type { AgenteCasoNovo, AgenteOpcoes, CasoEstudo, CasoEstudoResumo } from '../types';
+import { agenteService, processoService } from '../services/juripredict';
+import type { AgenteCasoNovo, AgenteOpcoes, CasoEstudo, CasoEstudoResumo, DadosDoCaso, Processo } from '../types';
 
 const INTERVALO_MS = 2000;
 // O agente liga depois do site: ao acordar da hibernação do plano gratuito, demora um pouco mais.
@@ -41,6 +41,7 @@ const formatarData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 const AgenteConteudo = () => {
   const [opcoes, setOpcoes] = useState<AgenteOpcoes | null>(null);
   const [casos, setCasos] = useState<CasoEstudoResumo[]>([]);
+  const [processos, setProcessos] = useState<Processo[]>([]);
   const [selecionado, setSelecionado] = useState<number | 'novo'>('novo');
   const [caso, setCaso] = useState<CasoEstudo | null>(null);
   const [erro, setErro] = useState('');
@@ -62,6 +63,8 @@ const AgenteConteudo = () => {
       .catch((requestError) => { if (montado) setErro(getApiError(requestError)); })
       .finally(() => { if (montado) setLigando(false); });
     void recarregarLista();
+    // opcional: sem a lista, o caso só não pode ser vinculado a um processo
+    processoService.list().then((lista) => { if (montado) setProcessos(lista); }).catch(() => undefined);
     return () => { montado = false; ativo.current = false; };
   }, [recarregarLista]);
 
@@ -129,7 +132,7 @@ const AgenteConteudo = () => {
     }
   };
 
-  const atualizar = async (dados: Pick<CasoEstudo, 'fase' | 'orgao_julgador' | 'provas'>) => {
+  const atualizar = async (dados: DadosDoCaso) => {
     if (!caso) return;
     try {
       setCaso(await agenteService.atualizar(caso.id, dados));
@@ -192,12 +195,13 @@ const AgenteConteudo = () => {
             </ul>
           </nav>
 
-          {selecionado === 'novo' && <NovoCaso opcoes={opcoes} enviando={enviando} onCriar={(dados) => void criar(dados)} />}
+          {selecionado === 'novo' && <NovoCaso opcoes={opcoes} processos={processos} enviando={enviando} onCriar={(dados) => void criar(dados)} />}
           {selecionado !== 'novo' && caso && (
             <Conversa
               key={caso.id}
               caso={caso}
               opcoes={opcoes}
+              processos={processos}
               enviando={enviando}
               onEnviar={enviar}
               onAtualizar={(dados) => void atualizar(dados)}

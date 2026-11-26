@@ -6,7 +6,7 @@ Agente de IA que mede um caso trabalhista, aponta o que melhorar e traz os casos
 
 É o agente do [JuriPredict](../README.md). Não tem tela: o advogado usa a página **Agente de IA** do app React, e só o backend Django chama este serviço, que em produção roda no mesmo contêiner do site. Tem dependências e `.env` próprios, sem acesso ao banco nem às chaves do Django. Cobre dois temas: adicional de insalubridade e adicional de periculosidade. A estrutura segue a do Treino MD Chefe.
 
-**Situação:** estrutura pronta. A base de casos no Pinecone ainda não existe; sem ela, o agente responde só pelos critérios do tema e avisa isso na resposta.
+**Situação:** pronto e testado. A base de casos no Pinecone é criada pelo `app.indexar` (veja [Base de casos](#base-de-casos-rag)); sem ela, o agente responde só pelos critérios do tema e avisa isso na resposta.
 
 ## Como funciona
 
@@ -110,7 +110,12 @@ Cada vetor no Pinecone precisa trazer os metadados de `RetrievedCase`, em `app/c
 ## Dados pessoais
 
 - O agente recebe só o caso: nem usuário, nem escritório, nem token.
-- CPF, CNPJ, PIS, e-mail e telefone são mascarados na entrada da API e nos trechos da base, antes de chegar ao Google e ao Langfuse. **Nomes não são mascarados:** o formulário pede que não sejam informados.
+- Os dados pessoais são mascarados na entrada da API e nos trechos da base, antes de chegar ao Google e ao Langfuse (`app/core/privacy.py`):
+  - pelo formato: CPF, CNPJ, PIS, e-mail, telefone e CEP;
+  - pelo rótulo que os precede: RG, CTPS, OAB, CNH, título de eleitor, agência, conta e data de nascimento;
+  - endereço, quando começa por um logradouro depois de "residente", "com sede" ou "endereço";
+  - **nomes, só onde o texto os marca:** depois de um rótulo ("Reclamante:", "Testemunhas:"), de um título ("Dr.", "Sra.") ou antes da qualificação ("..., brasileira", "..., CPF"). Um nome solto passa; por isso o formulário pede que não sejam informados.
+  - `tests/test_privacy.py` confere um contrato de trabalho inteiro (23 dados pessoais) e trechos de sentença que precisam ficar intactos, como "art. 818 da CLT c/c art. 373 do CPC".
 - Os trechos da base são indexados sem os nomes das partes (`exportar_jurimetria.py`). O texto da decisão não é devolvido pela API.
 - Os logs não registram relato, prompt nem resposta.
 

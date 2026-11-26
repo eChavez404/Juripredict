@@ -6,7 +6,6 @@ from rest_framework.test import APIClient
 
 from organizations.models import Escritorio, MembroEscritorio
 
-from .models import EventoAuditoria
 from .services import registrar_evento_auditoria, sanitizar
 
 

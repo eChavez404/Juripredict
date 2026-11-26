@@ -173,6 +173,13 @@ escritório. O id do job do agente fica só no servidor. Criar caso, enviar mens
 na auditoria, sem o texto. Uma análise sem resposta por 10 minutos, ou perdida num reinício do
 agente, vira erro e libera nova mensagem.
 
+O caso pode ser vinculado a um processo do escritório (`processo`, ao criar ou no PATCH). A cada
+mensagem, o relato enviado ao agente ganha o cadastro do processo (área, vara, comarca, situação,
+data e observações) e o texto dos documentos em PDF e DOCX, até 8 mil caracteres. Ficam de fora o
+cliente, a parte contrária, o título, o valor da causa, o número e o nome dos arquivos. DOC antigo e
+PDF digitalizado não têm texto lido. A mensagem do advogado guarda em `documentos_lidos` o que
+entrou, para a tela mostrar. Os dados pessoais do texto são mascarados no agente, antes da IA.
+
 ## Tokens de API e auditoria de agentes
 
 Credencial separada da senha para agentes (servidor MCP em `mcp_server/`). Só o hash SHA-256

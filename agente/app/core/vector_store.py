@@ -1,7 +1,7 @@
 """Busca dos casos mais próximos na base vetorial (Pinecone).
 
-A base ainda não existe: este módulo só lê, e define o contrato que a indexação
-precisa gravar nos metadados de cada vetor (`RetrievedCase` e `temas`).
+Este módulo só lê. Quem grava é o `app.indexar`, com os metadados de `RetrievedCase` mais
+`temas` em cada vetor.
 """
 
 from functools import lru_cache
@@ -36,9 +36,8 @@ class VectorStoreError(RuntimeError):
 class RetrievedCase(BaseModel):
     """Metadados esperados em cada vetor. Os nomes seguem o manifesto do coletor do Falcão.
 
-    TODO(base): contrato provisório, a fechar quando a base for definida. `temas` (lista com
-    os valores de `Theme`) também é obrigatório no índice, porque filtra a busca. `texto` deve
-    ser indexado sem nomes das partes: ele vai para o modelo e para o Langfuse.
+    `temas` (lista com os valores de `Theme`) também é obrigatório no índice, porque filtra a
+    busca. `texto` é indexado sem nomes das partes: ele vai para o modelo e para o Langfuse.
     """
 
     model_config = ConfigDict(extra="ignore")

@@ -214,6 +214,7 @@ export type AgenteCasoNovo = {
   fase: string;
   orgao_julgador: string;
   provas: string[];
+  processo: number | null;
   relato: string;
 };
 
@@ -226,6 +227,8 @@ export type MensagemCaso = {
   resultado: AgenteResultado | null;
   indice_atual: number | null;
   indice_potencial: number | null;
+  // na mensagem do advogado: o que dos documentos do processo vinculado a análise leu
+  documentos_lidos: { nome: string; situacao: string }[];
   criado_em: string;
 };
 
@@ -236,11 +239,14 @@ export type CasoEstudo = {
   fase: string;
   orgao_julgador: string;
   provas: string[];
+  processo: number | null;
   mensagens: MensagemCaso[];
   etapa: string | null;
   criado_em: string;
   atualizado_em: string;
 };
+
+export type DadosDoCaso = Pick<CasoEstudo, 'fase' | 'orgao_julgador' | 'provas' | 'processo'>;
 
 export type CasoEstudoResumo = Pick<CasoEstudo, 'id' | 'titulo' | 'tema' | 'fase' | 'atualizado_em'> & {
   indice_atual: number | null;

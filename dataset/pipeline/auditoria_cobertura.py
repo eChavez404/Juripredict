@@ -19,7 +19,6 @@ cobertos quanto para os nao cobertos - por isso o teste e possivel.
 
 import argparse
 import csv
-import json
 import os
 import random
 import re

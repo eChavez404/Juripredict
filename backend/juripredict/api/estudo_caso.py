@@ -5,10 +5,15 @@ mostrar o que a informação nova mudou. O agente não guarda nada: recebe o cas
 vez e devolve a análise, que fica aqui. O id do job nunca sai para o navegador.
 """
 
+import html
+import logging
+import re
+import zipfile
 from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
+from pypdf import PdfReader
 from rest_framework.exceptions import NotFound, ValidationError
 
 from auditlog.services import registrar_evento_auditoria
@@ -16,8 +21,15 @@ from auditlog.services import registrar_evento_auditoria
 from . import agente
 from .models import MensagemCaso
 
+logger = logging.getLogger(__name__)
+
 # O mesmo teto do agente (CaseRequest.relato): acima disso o caso precisa ser resumido.
 LIMITE_RELATO = 20000
+# Quanto do relato o processo vinculado pode ocupar; o resto fica para a conversa.
+LIMITE_PROCESSO = 8000
+PAGINAS_PDF = 30
+# O XML do DOCX é lido só até aqui: um zip pequeno pode descompactar em gigabytes.
+LIMITE_XML_DOCX = 5 * 1024 * 1024
 # Acima do pior caso do agente (busca, duas tentativas com repetição): depois disso, desiste.
 ESPERA_MAXIMA = timedelta(minutes=10)
 PERDIDA = "A análise se perdeu (o agente reiniciou). Envie a mensagem de novo."
@@ -38,6 +50,62 @@ def relato_consolidado(caso, nova=None):
     return relato
 
 
+def texto_do_arquivo(arquivo):
+    """O texto de um PDF ou DOCX. DOC antigo e PDF só de imagem (digitalizado) voltam vazios."""
+    extensao = arquivo.name.rsplit(".", 1)[-1].lower()
+    try:
+        with arquivo.open("rb") as conteudo:
+            if extensao == "pdf":
+                paginas = PdfReader(conteudo).pages[:PAGINAS_PDF]
+                return "\n".join(pagina.extract_text() or "" for pagina in paginas).strip()
+            if extensao == "docx":
+                with zipfile.ZipFile(conteudo) as docx, docx.open("word/document.xml") as xml:
+                    corpo = xml.read(LIMITE_XML_DOCX).decode("utf-8", "ignore")
+                paragrafos = corpo.split("</w:p>")
+                return "\n".join(
+                    html.unescape("".join(re.findall(r"<w:t(?:\s[^>]*)?>([^<]*)</w:t>", p)))
+                    for p in paragrafos
+                ).strip()
+    except Exception as exc:  # arquivo enviado pelo usuário: corrompido não derruba a análise
+        logger.warning("documento_ilegivel extensao=%s causa=%s", extensao, type(exc).__name__)
+    return ""
+
+
+def contexto_do_processo(processo, espaco):
+    """O cadastro do processo e o texto dos documentos, em até `espaco` caracteres.
+
+    Ficam de fora cliente, parte contrária, título, valor da causa e o nome dos arquivos, que
+    costumam trazer nomes. Os dados pessoais do texto são mascarados no agente, antes da IA.
+    Devolve também a situação de cada documento, para a tela mostrar o que a análise leu.
+    """
+    espaco = min(espaco, LIMITE_PROCESSO)
+    texto = (
+        f"Processo vinculado, do cadastro do escritório: área {processo.get_area_display().lower()}, "
+        f"{processo.vara}, comarca de {processo.comarca}, situação {processo.get_status_display().lower()}"
+        + (f", distribuído em {processo.data_distribuicao:%d/%m/%Y}" if processo.data_distribuicao else "")
+        + "."
+    )
+    if processo.observacoes:
+        texto += f"\nObservações do processo: {processo.observacoes}"
+    arquivos = [(d.nome, d.arquivo) for d in processo.documentos.all()]
+    if processo.arquivo_peticao_inicial:
+        arquivos.append(("Petição inicial", processo.arquivo_peticao_inicial))
+    lidos = []
+    for numero, (nome, arquivo) in enumerate(arquivos, start=1):
+        cabecalho = f"\n\nDocumento {numero} do processo:\n"
+        sobra = espaco - len(texto) - len(cabecalho)
+        conteudo = texto_do_arquivo(arquivo) if sobra >= 200 else None
+        if conteudo is None:
+            situacao = "fora do limite"
+        elif not conteudo:
+            situacao = "sem texto"
+        else:
+            texto += cabecalho + conteudo[:sobra]
+            situacao = "lido" if len(conteudo) <= sobra else "lido em parte"
+        lidos.append({"nome": nome, "situacao": situacao})
+    return texto[:espaco], lidos
+
+
 def _pedido(caso, relato, mensagem=None):
     return {
         "tema": caso.tema,
@@ -54,8 +122,14 @@ def enviar(caso, texto, usuario, *, primeira=False):
     if caso.mensagens.filter(status=MensagemCaso.Status.PENDENTE).exists():
         raise ValidationError({"texto": ["Aguarde a análise em andamento terminar."]})
     relato = relato_consolidado(caso, texto)
+    documentos_lidos = []
+    if caso.processo:
+        contexto, documentos_lidos = contexto_do_processo(caso.processo, LIMITE_RELATO - len(relato) - 2)
+        relato = f"{relato}\n\n{contexto}"
     with transaction.atomic():
-        MensagemCaso.objects.create(caso=caso, autor=MensagemCaso.Autor.ADVOGADO, texto=texto)
+        MensagemCaso.objects.create(
+            caso=caso, autor=MensagemCaso.Autor.ADVOGADO, texto=texto, documentos_lidos=documentos_lidos
+        )
         job_id, _ = agente.iniciar(_pedido(caso, relato, None if primeira else texto))
         MensagemCaso.objects.create(
             caso=caso, autor=MensagemCaso.Autor.AGENTE, status=MensagemCaso.Status.PENDENTE, job_id=job_id
@@ -67,7 +141,7 @@ def enviar(caso, texto, usuario, *, primeira=False):
             acao="agente.caso_criado" if primeira else "agente.mensagem_enviada",
             recurso_tipo="caso_estudo",
             recurso_id=caso.pk,
-            alteracoes={"tema": caso.tema, "fase": caso.fase},
+            alteracoes={"tema": caso.tema, "fase": caso.fase, "processo": caso.processo_id},
         )
 
 

@@ -1,5 +1,4 @@
 import api from '../../services/api';
-import type { Usuario } from '../../types';
 import type { Convite, MembroResumo, PapelMembro, StatusMembro } from './types';
 import { normalizeSessao } from './sessionAdapter';
 
@@ -48,5 +47,3 @@ export const conviteService = {
     await api.delete(`/escritorios/${escritorioId}/convites/${conviteId}/`);
   },
 };
-
-export const usuarioDoMembro = (membro: MembroResumo): Usuario => membro.usuario;
