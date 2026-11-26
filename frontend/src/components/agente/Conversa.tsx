@@ -143,6 +143,7 @@ const Conversa = ({ caso, opcoes, processos, enviando, onEnviar, onAtualizar, on
             <li key={mensagem.id} className="agente-bolha agente-bolha--agente">
               <span className="eyebrow">Agente JuriPredict</span>
               <p>{mensagem.texto}</p>
+              {mensagem.resultado?.aviso && <Feedback type="info">{mensagem.resultado.aviso}</Feedback>}
               {mensagem.indice_atual !== null && (
                 <small>Índice {mensagem.indice_atual}{variacao(mensagem.indice_atual, anterior?.indice_atual)} · potencial {mensagem.indice_potencial}</small>
               )}

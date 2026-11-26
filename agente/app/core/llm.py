@@ -63,6 +63,14 @@ def provider_status(error: BaseException) -> str:
     return " ".join(filter(None, parts)) or "-"
 
 
+COTA_RENOVA = "Ela é renovada de madrugada, entre 4h e 5h (horário de Brasília)."
+
+
+def cota_diaria(error: BaseException) -> bool:
+    """No 429 do Google, o id da cota diz qual acabou: a do dia traz "PerDay", a do minuto não."""
+    return any("PerDay" in str(e) for e in (error, error.__cause__) if e is not None)
+
+
 def invoke_with_timeout_translation(structured_model, messages):
     """Traduz timeout sem registrar prompt, resposta ou mensagem da exceção."""
 

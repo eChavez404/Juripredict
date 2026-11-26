@@ -33,7 +33,7 @@ AGENTE_SEGREDO = (os.getenv("AGENTE_SEGREDO") or "").strip()
 # pelo próprio SDK a partir do .env.
 LLM_MODEL = (os.getenv("LLM_MODEL") or "").strip()
 # Usado só quando o principal segue indisponível depois das repetições. Vazio desliga.
-LLM_FALLBACK_MODEL = os.getenv("LLM_FALLBACK_MODEL", "google_genai:gemini-3.5-flash-lite").strip()
+LLM_FALLBACK_MODEL = os.getenv("LLM_FALLBACK_MODEL", "google_genai:gemini-3.1-flash-lite").strip()
 GOOGLE_API_KEY = (os.getenv("GOOGLE_API_KEY") or "").strip()
 
 # Sem as duas chaves, nada é enviado ao Langfuse.
