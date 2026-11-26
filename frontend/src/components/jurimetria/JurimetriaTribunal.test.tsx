@@ -37,12 +37,12 @@ const base: JurimetriaTribunalDisponivel = {
 describe('JurimetriaTribunal', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('sem conferência humana mostra o n e o motivo, nunca um percentual', async () => {
+  it('sem conferência humana mostra o n, nunca um percentual, e não repete o aviso de supressão', async () => {
     vi.mocked(jurimetriaService.tribunal).mockResolvedValue(base);
     render(<JurimetriaTribunal />);
 
-    expect(await screen.findByText('Taxas ainda suprimidas.')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(await screen.findByText('—')).toBeInTheDocument();
+    expect(screen.queryByText(/Taxas ainda suprimidas|regra automática/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Ver as 120 sentenças/ })).toBeInTheDocument();
     expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument();
     expect(screen.getByText(/Cobertura da fonte neste recorte: não medida/)).toBeInTheDocument();
@@ -59,7 +59,6 @@ describe('JurimetriaTribunal', () => {
     expect(await screen.findByText('64%')).toBeInTheDocument();
     expect(screen.getByText('IC 95%: 55% a 72%')).toBeInTheDocument();
     expect(screen.getByText('Cobertura da fonte neste recorte: 81%')).toBeInTheDocument();
-    expect(screen.queryByText('Taxas ainda suprimidas.')).not.toBeInTheDocument();
   });
 
   it('trocar o pedido consulta de novo e limpa vara e ano', async () => {
