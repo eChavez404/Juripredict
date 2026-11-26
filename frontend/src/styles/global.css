@@ -2978,24 +2978,6 @@ h6 {
   gap: 1rem;
 }
 
-.tribunal-aviso {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  padding: 0.85rem 1rem;
-  color: #7a5a1d;
-  background: #fff8ea;
-  border: 1px solid #f0dcae;
-  border-radius: var(--radius-sm);
-  font-size: 0.74rem;
-  line-height: 1.6;
-}
-
-.tribunal-aviso svg {
-  flex: 0 0 auto;
-  margin-top: 0.15rem;
-}
-
 .tribunal-resumo {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
 }
