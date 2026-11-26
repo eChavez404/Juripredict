@@ -9,7 +9,6 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase, override_settings
-from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 

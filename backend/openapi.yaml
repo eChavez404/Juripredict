@@ -2494,6 +2494,9 @@ components:
             type: string
             maxLength: 40
           maxItems: 20
+        processo:
+          type: integer
+          nullable: true
         mensagens:
           type: array
           items:
@@ -2544,12 +2547,15 @@ components:
             minLength: 1
             maxLength: 40
           maxItems: 20
+        processo:
+          type: integer
+          nullable: true
         relato:
           type: string
           writeOnly: true
           minLength: 40
-          description: Sem nomes das partes. CPF, CNPJ, PIS, e-mail e telefone são
-            mascarados no agente.
+          description: Sem nomes das partes. Documentos, contatos, endereço e conta
+            são mascarados no agente.
           maxLength: 4000
       required:
       - fase
@@ -3424,6 +3430,8 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        documentos_lidos:
+          readOnly: true
         criado_em:
           type: string
           format: date-time
@@ -3431,6 +3439,7 @@ components:
       required:
       - autor
       - criado_em
+      - documentos_lidos
       - erro
       - id
       - indice_atual
@@ -3540,7 +3549,8 @@ components:
         * `ESTAGIARIO` - Estagiário
     PatchedCasoEstudoAtualizacaoRequest:
       type: object
-      description: 'O que muda entre uma mensagem e outra: título, fase, órgão e provas.'
+      description: 'O que muda entre uma mensagem e outra: título, fase, órgão, provas
+        e processo vinculado.'
       properties:
         titulo:
           type: string
@@ -3559,6 +3569,9 @@ components:
             minLength: 1
             maxLength: 40
           maxItems: 20
+        processo:
+          type: integer
+          nullable: true
     PatchedClienteRequest:
       type: object
       properties:

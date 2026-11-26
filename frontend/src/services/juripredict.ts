@@ -6,6 +6,7 @@ import type {
   AndamentosResposta,
   CasoEstudo,
   CasoEstudoResumo,
+  DadosDoCaso,
   Cliente,
   ClientePayload,
   DashboardData,
@@ -133,7 +134,7 @@ export const agenteService = {
   casos: async () => (await api.get<CasoEstudoResumo[]>('/agente/casos/')).data,
   caso: async (id: number) => (await api.get<CasoEstudo>(`/agente/casos/${id}/`)).data,
   criar: async (caso: AgenteCasoNovo) => (await api.post<CasoEstudo>('/agente/casos/', caso)).data,
-  atualizar: async (id: number, dados: Pick<CasoEstudo, 'fase' | 'orgao_julgador' | 'provas'>) => (
+  atualizar: async (id: number, dados: DadosDoCaso) => (
     await api.patch<CasoEstudo>(`/agente/casos/${id}/`, dados)
   ).data,
   enviar: async (id: number, texto: string) => (

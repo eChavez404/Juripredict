@@ -351,17 +351,6 @@ h6 {
   box-shadow: var(--shadow-sm);
 }
 
-.icon-button__dot {
-  position: absolute;
-  top: 9px;
-  right: 9px;
-  width: 6px;
-  height: 6px;
-  background: var(--chart-red);
-  border: 1px solid #ffffff;
-  border-radius: 50%;
-}
-
 .menu-button {
   display: none;
 }
@@ -587,20 +576,6 @@ h6 {
   min-height: 34px;
   padding: 0.45rem 0.7rem;
   font-size: 0.7rem;
-}
-
-.text-button {
-  padding: 0;
-  color: var(--accent-primary);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font-size: inherit;
-  font-weight: 600;
-}
-
-.text-button:hover {
-  color: var(--accent-primary-hover);
 }
 
 .field-label {
@@ -879,8 +854,7 @@ h6 {
 }
 
 /* Dashboard */
-.recent-list,
-.insight-list {
+.recent-list {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;

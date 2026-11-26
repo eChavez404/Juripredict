@@ -670,7 +670,9 @@ class CasoEstudoViewSet(EscritorioContextMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return CasoEstudo.objects.none()
-        return CasoEstudo.objects.filter(escritorio=self.get_escritorio()).prefetch_related("mensagens")
+        return CasoEstudo.objects.filter(escritorio=self.get_escritorio()).select_related(
+            "processo"
+        ).prefetch_related("mensagens")
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -706,7 +708,9 @@ class CasoEstudoViewSet(EscritorioContextMixin, viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         caso = self.get_object()
-        serializer = CasoEstudoAtualizacaoSerializer(caso, data=request.data, partial=True)
+        serializer = CasoEstudoAtualizacaoSerializer(
+            caso, data=request.data, partial=True, context=self.get_serializer_context()
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return self._detalhe(caso)

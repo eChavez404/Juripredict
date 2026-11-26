@@ -11,7 +11,7 @@ from typing import Optional
 
 from .audit import auditar_lote, imprimir_auditoria
 from .client import ClienteFalcao, PAGE_SIZE_MAX
-from .models import Consulta, Documento, ErroFalcao, ErroLimite, ErroPagina, ErroSessao, Pagina
+from .models import Consulta, ErroFalcao, ErroLimite, ErroPagina, ErroSessao, Pagina
 from .normalize import html_para_texto, resumo_normalizacao
 from .storage import Armazenamento
 
