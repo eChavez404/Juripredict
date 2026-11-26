@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Gavel, Info, ListChecks } from 'lucide-react';
+import { Gavel, ListChecks } from 'lucide-react';
 import { getApiError } from '../../services/api';
 import { jurimetriaService, type FiltrosTribunal } from '../../services/juripredict';
 import type { JurimetriaTribunal as Dados, TaxaTribunal } from '../../types';
@@ -37,6 +37,8 @@ const JurimetriaTribunal = () => {
   }
 
   const { geral, validacao, opcoes, fonte } = dados;
+  // a supressão geral (rótulo ainda não conferido) não aparece; só o motivo próprio do recorte
+  const motivoDoRecorte = (motivo: string | null) => (motivo && motivo !== validacao.motivo ? motivo : undefined);
   const mudar = (campos: Partial<FiltrosTribunal>) => setFiltros((atual) => ({ ...atual, ...campos }));
   const tema = opcoes.temas.find((item) => item.valor === filtros.tema)?.rotulo ?? filtros.tema;
   const tituloRecorte = [tema, filtros.vara || 'todas as varas', filtros.ano || 'todos os anos'].join(' · ');
@@ -69,16 +71,6 @@ const JurimetriaTribunal = () => {
         </label>
       </div>
 
-      {!validacao.rotulo_conferido && (
-        <div className="tribunal-aviso" role="note">
-          <Info size={18} aria-hidden="true" />
-          <p>
-            <strong>Taxas ainda suprimidas.</strong> {validacao.motivo} As taxas aparecem quando essa conferência for feita e a
-            cobertura da fonte for medida. Até lá, veja quantas sentenças existem e leia cada uma.
-          </p>
-        </div>
-      )}
-
       <section className="grid tribunal-resumo" aria-label="Taxa de deferimento do recorte">
         <article className="panel panel--padded tribunal-taxa">
           <span className="eyebrow">Taxa de deferimento</span>
@@ -88,7 +80,7 @@ const JurimetriaTribunal = () => {
           <p className="field-hint">
             {geral.cobertura === null ? 'Cobertura da fonte neste recorte: não medida' : `Cobertura da fonte neste recorte: ${geral.cobertura}%`}
           </p>
-          {geral.motivo && <p className="tribunal-motivo">{geral.motivo}</p>}
+          {motivoDoRecorte(geral.motivo) && <p className="tribunal-motivo">{geral.motivo}</p>}
           <button className="button button--primary tribunal-taxa__ver" type="button" disabled={!geral.total} onClick={() => abrir(tituloRecorte)}>
             <ListChecks size={16} aria-hidden="true" /> Ver as {geral.total} sentenças
           </button>
@@ -121,7 +113,7 @@ const JurimetriaTribunal = () => {
                     <tr key={linha.chave}>
                       <td>{linha.rotulo}</td>
                       <td>{linha.taxa.total}</td>
-                      <td title={linha.taxa.motivo ?? undefined}>{descreverTaxa(linha.taxa)}</td>
+                      <td title={motivoDoRecorte(linha.taxa.motivo)}>{descreverTaxa(linha.taxa)}</td>
                       <td>
                         <button className="button button--secondary button--small" type="button" aria-label={`Ver sentenças: ${linha.rotulo}`} onClick={() => abrir(`${tema} · ${linha.rotulo}`, linha.extra)}>
                           Ver sentenças
