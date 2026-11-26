@@ -4,8 +4,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Layout from '../components/Layout';
 import { AuthContext, type AuthContextValue } from '../contexts/auth';
-import { agenteService } from '../services/juripredict';
-import type { AgenteResultado, CasoEstudo, MensagemCaso } from '../types';
+import { agenteService, processoService } from '../services/juripredict';
+import type { AgenteResultado, CasoEstudo, MensagemCaso, Processo } from '../types';
 import Agente from './Agente';
 
 vi.mock('../services/juripredict', () => ({
@@ -13,6 +13,7 @@ vi.mock('../services/juripredict', () => ({
     opcoes: vi.fn(), casos: vi.fn(), caso: vi.fn(), criar: vi.fn(), atualizar: vi.fn(), enviar: vi.fn(), excluir: vi.fn(),
   },
   pendenciaService: { get: vi.fn(() => new Promise(() => {})) },
+  processoService: { list: vi.fn() },
 }));
 
 const sessao = (capabilities: string[], escritorio = 'e1') => ({
@@ -46,12 +47,12 @@ const resultado = (indice: number, perguntas: string[] = []): AgenteResultado =>
 
 let proximoId = 1;
 const mensagem = (campos: Partial<MensagemCaso>): MensagemCaso => ({
-  id: proximoId++, autor: 'agente', texto: '', status: 'concluida', erro: '', resultado: null,
+  id: proximoId++, autor: 'agente', texto: '', status: 'concluida', erro: '', resultado: null, documentos_lidos: [],
   indice_atual: null, indice_potencial: null, criado_em: '2026-11-25T10:00:00Z', ...campos,
 });
 
 const caso = (mensagens: MensagemCaso[], campos: Partial<CasoEstudo> = {}): CasoEstudo => ({
-  id: 7, titulo: 'Limpeza hospitalar', tema: 'insalubridade', fase: 'instrucao', orgao_julgador: '', provas: ['ppp'],
+  id: 7, titulo: 'Limpeza hospitalar', tema: 'insalubridade', fase: 'instrucao', orgao_julgador: '', provas: ['ppp'], processo: null,
   mensagens, etapa: null, criado_em: '2026-11-25T10:00:00Z', atualizado_em: '2026-11-25T10:00:00Z', ...campos,
 });
 
@@ -74,6 +75,9 @@ describe('Agente de IA', () => {
       provas: [{ value: 'ppp', label: 'PPP' }],
     });
     vi.mocked(agenteService.casos).mockResolvedValue([]);
+    vi.mocked(processoService.list).mockResolvedValue([
+      { id: 3, numero_cnj: '0016123-45.2024.5.16.0001', titulo: 'Insalubridade hospital' } as Processo,
+    ]);
   });
 
   afterEach(() => { vi.useRealTimers(); });
@@ -107,7 +111,7 @@ describe('Agente de IA', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Analisar caso' })); });
 
     expect(agenteService.criar).toHaveBeenCalledWith({
-      tema: 'insalubridade', fase: 'instrucao', orgao_julgador: '', provas: ['ppp'], relato: RELATO,
+      tema: 'insalubridade', fase: 'instrucao', orgao_julgador: '', provas: ['ppp'], processo: null, relato: RELATO,
     });
     expect(await screen.findByText('Buscando decisões parecidas na base do TRT-16...')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Aguardando a análise...' })).toBeDisabled();
@@ -117,6 +121,24 @@ describe('Agente de IA', () => {
     expect(conversa.getByText('Falta a prova técnica; requeira a perícia.')).toBeInTheDocument();
     expect(conversa.getByText(/Índice 58 · potencial 90/)).toBeInTheDocument();
     expect(agenteService.casos).toHaveBeenCalledTimes(3);
+  });
+
+  it('vincula um processo do escritório e mostra o que a análise leu dos documentos', async () => {
+    const lido = caso([
+      mensagem({ autor: 'advogado', texto: RELATO, documentos_lidos: [{ nome: 'contrato.pdf', situacao: 'lido' }, { nome: 'foto.doc', situacao: 'sem texto' }] }),
+      mensagem({ texto: 'O contrato confirma a função.', resultado: resultado(70), indice_atual: 70, indice_potencial: 90 }),
+    ], { processo: 3 });
+    vi.mocked(agenteService.criar).mockResolvedValue(lido);
+    render(tela());
+
+    fireEvent.change(await screen.findByLabelText('Relato do caso'), { target: { value: RELATO } });
+    fireEvent.change(await screen.findByLabelText('Processo do escritório (opcional)'), { target: { value: '3' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Analisar caso' })); });
+
+    expect(agenteService.criar).toHaveBeenCalledWith(expect.objectContaining({ processo: 3 }));
+    const conversa = within(await screen.findByRole('region', { name: 'Conversa sobre o caso' }));
+    expect(conversa.getByText('Do processo: contrato.pdf (lido), foto.doc (sem texto)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Processo do escritório (opcional)')).toHaveValue('3');
   });
 
   it('a pergunta do agente vira resposta do advogado e a evolução mostra a diferença', async () => {
@@ -187,7 +209,7 @@ describe('Agente de IA', () => {
     await screen.findByText('Dados do caso (valem para a próxima mensagem)');
     fireEvent.change(screen.getByLabelText('Fase do processo'), { target: { value: 'recurso' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Salvar dados do caso' })); });
-    expect(agenteService.atualizar).toHaveBeenCalledWith(7, { fase: 'recurso', orgao_julgador: '', provas: ['ppp'] });
+    expect(agenteService.atualizar).toHaveBeenCalledWith(7, { fase: 'recurso', orgao_julgador: '', provas: ['ppp'], processo: null });
 
     fireEvent.click(screen.getByRole('button', { name: /Excluir caso/ }));
     await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Excluir' })); });

@@ -248,17 +248,25 @@ class MensagemCasoSerializer(serializers.ModelSerializer):
         model = MensagemCaso
         fields = (
             "id", "autor", "texto", "status", "erro", "resultado",
-            "indice_atual", "indice_potencial", "criado_em",
+            "indice_atual", "indice_potencial", "documentos_lidos", "criado_em",
         )
         read_only_fields = fields
 
 
-class CasoEstudoSerializer(serializers.ModelSerializer):
+class ProcessoDoEscritorioMixin:
+    def validate_processo(self, processo):
+        escritorio = contexto_escritorio_da_request(self.context["request"]).escritorio
+        if processo and processo.escritorio_id != escritorio.id:
+            raise serializers.ValidationError("Processo inválido para este escritório.")
+        return processo
+
+
+class CasoEstudoSerializer(ProcessoDoEscritorioMixin, serializers.ModelSerializer):
     """O caso e a conversa. Ao criar, `relato` é a primeira mensagem do advogado."""
 
     relato = serializers.CharField(
         write_only=True, min_length=40, max_length=4000,
-        help_text="Sem nomes das partes. CPF, CNPJ, PIS, e-mail e telefone são mascarados no agente.",
+        help_text="Sem nomes das partes. Documentos, contatos, endereço e conta são mascarados no agente.",
     )
     provas = serializers.ListField(
         child=serializers.CharField(max_length=40), required=False, max_length=20
@@ -269,7 +277,7 @@ class CasoEstudoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CasoEstudo
         fields = (
-            "id", "titulo", "tema", "fase", "orgao_julgador", "provas", "relato",
+            "id", "titulo", "tema", "fase", "orgao_julgador", "provas", "processo", "relato",
             "mensagens", "etapa", "criado_em", "atualizado_em",
         )
         read_only_fields = ("id", "mensagens", "etapa", "criado_em", "atualizado_em")
@@ -283,14 +291,14 @@ class CasoEstudoSerializer(serializers.ModelSerializer):
         return valor
 
 
-class CasoEstudoAtualizacaoSerializer(serializers.ModelSerializer):
-    """O que muda entre uma mensagem e outra: título, fase, órgão e provas."""
+class CasoEstudoAtualizacaoSerializer(ProcessoDoEscritorioMixin, serializers.ModelSerializer):
+    """O que muda entre uma mensagem e outra: título, fase, órgão, provas e processo vinculado."""
 
     provas = serializers.ListField(child=serializers.CharField(max_length=40), max_length=20)
 
     class Meta:
         model = CasoEstudo
-        fields = ("titulo", "fase", "orgao_julgador", "provas")
+        fields = ("titulo", "fase", "orgao_julgador", "provas", "processo")
         extra_kwargs = {field: {"required": False} for field in fields}
 
 

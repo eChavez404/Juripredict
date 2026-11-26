@@ -3,15 +3,17 @@ import { Send, Trash2 } from 'lucide-react';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import Feedback from '../ui/Feedback';
 import AnaliseCompleta from './AnaliseCompleta';
+import { SeletorProcesso } from './NovoCaso';
 import ProgressoAnalise from './ProgressoAnalise';
-import type { AgenteOpcoes, CasoEstudo } from '../../types';
+import type { AgenteOpcoes, CasoEstudo, DadosDoCaso, Processo } from '../../types';
 
 type ConversaProps = {
   caso: CasoEstudo;
   opcoes: AgenteOpcoes;
   enviando: boolean;
   onEnviar: (texto: string) => Promise<boolean>;
-  onAtualizar: (dados: Pick<CasoEstudo, 'fase' | 'orgao_julgador' | 'provas'>) => void;
+  processos: Processo[];
+  onAtualizar: (dados: DadosDoCaso) => void;
   onExcluir: () => void;
 };
 
@@ -23,9 +25,11 @@ const variacao = (atual: number, anterior?: number | null) => {
   return diferenca === 0 ? ' (sem mudança)' : ` (${diferenca > 0 ? '+' : ''}${diferenca} desde a análise anterior)`;
 };
 
-const Conversa = ({ caso, opcoes, enviando, onEnviar, onAtualizar, onExcluir }: ConversaProps) => {
+const Conversa = ({ caso, opcoes, processos, enviando, onEnviar, onAtualizar, onExcluir }: ConversaProps) => {
   const [texto, setTexto] = useState('');
-  const [dados, setDados] = useState({ fase: caso.fase, orgao_julgador: caso.orgao_julgador, provas: caso.provas });
+  const [dados, setDados] = useState<DadosDoCaso>({
+    fase: caso.fase, orgao_julgador: caso.orgao_julgador, provas: caso.provas, processo: caso.processo,
+  });
   const [excluindo, setExcluindo] = useState(false);
   const fim = useRef<HTMLDivElement>(null);
   const campo = useRef<HTMLTextAreaElement>(null);
@@ -109,6 +113,7 @@ const Conversa = ({ caso, opcoes, enviando, onEnviar, onAtualizar, onExcluir }: 
               ))}
             </div>
           </fieldset>
+          <SeletorProcesso processos={processos} valor={dados.processo} onMudar={(processo) => setDados({ ...dados, processo })} />
         </div>
         <div className="form-actions">
           <button className="button button--secondary button--small" type="button" onClick={() => onAtualizar(dados)}>Salvar dados do caso</button>
@@ -118,7 +123,14 @@ const Conversa = ({ caso, opcoes, enviando, onEnviar, onAtualizar, onExcluir }: 
       <ol className="agente-mensagens">
         {caso.mensagens.map((mensagem) => {
           if (mensagem.autor === 'advogado') {
-            return <li key={mensagem.id} className="agente-bolha agente-bolha--advogado"><p>{mensagem.texto}</p></li>;
+            return (
+              <li key={mensagem.id} className="agente-bolha agente-bolha--advogado">
+                <p>{mensagem.texto}</p>
+                {mensagem.documentos_lidos.length > 0 && (
+                  <small>Do processo: {mensagem.documentos_lidos.map((doc) => `${doc.nome} (${doc.situacao})`).join(', ')}</small>
+                )}
+              </li>
+            );
           }
           if (mensagem.status === 'pendente') {
             return <li key={mensagem.id}><ProgressoAnalise etapa={caso.etapa ?? 'prepare_context'} comBase={opcoes.base_configurada} /></li>;

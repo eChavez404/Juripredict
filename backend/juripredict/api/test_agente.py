@@ -1,10 +1,14 @@
 import json
+import tempfile
+import zipfile
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
+from xml.sax.saxutils import escape
 
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -12,13 +16,14 @@ from rest_framework.test import APIClient
 from auditlog.models import EventoAuditoria
 from organizations.models import Escritorio, MembroEscritorio
 
-from .models import CasoEstudo, MensagemCaso
+from .models import CasoEstudo, Cliente, DocumentoProcesso, MensagemCaso, Processo
 from .test_papeis import PAPEL, PapeisBase, User
 
 RELATO = "Auxiliar de limpeza em banheiros de hospital, com contato diário com lixo hospitalar."
 CASO = {"tema": "insalubridade", "fase": "instrucao", "relato": RELATO, "provas": ["ppp"]}
 ROTA = "/api/v1/agente/casos/"
 JOB = {"job_id": "a" * 32, "status": "running", "step": "prepare_context", "result": None, "error": None}
+MEDIA = tempfile.mkdtemp(prefix="juripredict-test-media-")
 
 
 def resultado(indice=58, potencial=83, titulo="Limpeza hospitalar"):
@@ -31,6 +36,39 @@ def resultado(indice=58, potencial=83, titulo="Limpeza hospitalar"):
 
 def falha_http(codigo):
     return HTTPError("http://agente.interno", codigo, "x", None, BytesIO(b'{"detail": "interno"}'))
+
+
+def pdf(texto):
+    """Um PDF de uma página com `texto`, montado à mão (com xref) para não depender de gerador."""
+    conteudo = f"BT /F1 12 Tf 72 712 Td ({texto}) Tj ET".encode()
+    objetos = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R"
+        b" /Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(conteudo), conteudo),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    saida = BytesIO()
+    saida.write(b"%PDF-1.4\n")
+    posicoes = []
+    for numero, objeto in enumerate(objetos, start=1):
+        posicoes.append(saida.tell())
+        saida.write(b"%d 0 obj\n%s\nendobj\n" % (numero, objeto))
+    xref = saida.tell()
+    saida.write(b"xref\n0 %d\n0000000000 65535 f \n" % (len(objetos) + 1))
+    for posicao in posicoes:
+        saida.write(b"%010d 00000 n \n" % posicao)
+    saida.write(b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objetos) + 1, xref))
+    return saida.getvalue()
+
+
+def docx(*paragrafos):
+    saida = BytesIO()
+    with zipfile.ZipFile(saida, "w") as arquivo:
+        corpo = "".join(f'<w:p><w:r><w:t xml:space="preserve">{escape(p)}</w:t></w:r></w:p>' for p in paragrafos)
+        arquivo.writestr("word/document.xml", f"<w:document><w:body>{corpo}</w:body></w:document>")
+    return saida.getvalue()
 
 
 @override_settings(AGENTE_URL="http://agente.interno:8001", AGENTE_SEGREDO="segredo-de-teste")
@@ -111,7 +149,7 @@ class ConversaTests(AgenteBase):
         self.assertEqual(resposta.data["etapa"], "prepare_context")
         self.assertNotIn("job_id", json.dumps(resposta.data))
         evento = EventoAuditoria.objects.get(acao="agente.caso_criado")
-        self.assertEqual(evento.alteracoes, {"tema": "insalubridade", "fase": "instrucao"})
+        self.assertEqual(evento.alteracoes, {"tema": "insalubridade", "fase": "instrucao", "processo": None})
 
     def test_ao_concluir_grava_resposta_indices_e_titulo(self):
         caso_id = self.criar().data["id"]
@@ -229,3 +267,77 @@ class EscritorioTests(AgenteBase):
         self.assertEqual(self.api.delete(f"{ROTA}{caso_id}/").status_code, 204)
         self.assertFalse(MensagemCaso.objects.exists())
         self.assertTrue(EventoAuditoria.objects.filter(acao="agente.caso_excluido").exists())
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class ProcessoVinculadoTests(AgenteBase):
+    def setUp(self):
+        super().setUp()
+        self.cliente.nome = "Maria das Graças Sousa"
+        self.cliente.save()
+        self.processo.parte_contraria = "Hospital Santa Luzia"
+        self.processo.titulo = "Maria x Hospital"
+        self.processo.vara = "Vara do Trabalho de Balsas"
+        self.processo.observacoes = "Trabalhou na limpeza do centro cirúrgico."
+        self.processo.save()
+
+    def anexar(self, nome, conteudo):
+        DocumentoProcesso.objects.create(
+            processo=self.processo, nome=nome, tamanho=len(conteudo),
+            arquivo=SimpleUploadedFile(nome, conteudo),
+        )
+
+    def test_documentos_e_cadastro_entram_sem_cliente_parte_valor_nem_nome_de_arquivo(self):
+        self.anexar("contrato Maria.docx", docx("CONTRATO DE TRABALHO", "Função: auxiliar de limpeza hospitalar."))
+        self.anexar("laudo.pdf", pdf("Laudo pericial: insalubridade em grau maximo"))
+        self.anexar("antigo.doc", b"\xd0\xcf\x11\xe0 sem texto legivel")
+        self.anexar("quebrado.pdf", b"%PDF-1.4 truncado")
+
+        resposta = self.criar(processo=self.processo.pk)
+
+        self.assertEqual(resposta.status_code, 201)
+        self.assertEqual(resposta.data["processo"], self.processo.pk)
+        relato = json.loads(self.pedidos_ao_agente()[0].data)["relato"]
+        for presente in (RELATO, "Vara do Trabalho de Balsas", "centro cirúrgico", "auxiliar de limpeza hospitalar",
+                         "Laudo pericial: insalubridade em grau maximo"):
+            self.assertIn(presente, relato)
+        for ausente in ("Maria", "Hospital Santa Luzia", "12345", "contrato Maria", "laudo.pdf", self.processo.numero_cnj):
+            self.assertNotIn(ausente, relato)
+        lidos = resposta.data["mensagens"][0]["documentos_lidos"]
+        self.assertEqual(
+            {d["nome"]: d["situacao"] for d in lidos},
+            {"contrato Maria.docx": "lido", "laudo.pdf": "lido", "antigo.doc": "sem texto", "quebrado.pdf": "sem texto"},
+        )
+        evento = EventoAuditoria.objects.get(acao="agente.caso_criado")
+        self.assertEqual(evento.alteracoes["processo"], self.processo.pk)
+
+    def test_documento_longo_entra_em_parte_e_os_seguintes_ficam_fora(self):
+        self.anexar("depois.docx", docx("ficou de fora"))
+        self.anexar("longo.docx", docx("x" * 20000))
+
+        lidos = self.criar(processo=self.processo.pk).data["mensagens"][0]["documentos_lidos"]
+
+        self.assertEqual(lidos, [{"nome": "longo.docx", "situacao": "lido em parte"}, {"nome": "depois.docx", "situacao": "fora do limite"}])
+        relato = json.loads(self.pedidos_ao_agente()[0].data)["relato"]
+        self.assertLessEqual(len(relato), 20000)
+        self.assertNotIn("ficou de fora", relato)
+
+    def test_vincular_depois_vale_para_a_proxima_mensagem_e_so_processo_do_escritorio(self):
+        caso_id = self.criar().data["id"]
+        self.concluir(caso_id)
+        outro = Escritorio.objects.create(nome="Outra", criado_por=User.objects.first())
+        cliente = Cliente.objects.create(escritorio=outro, usuario=User.objects.first(), nome="Y", cpf_cnpj="")
+        alheio = Processo.objects.create(
+            escritorio=outro, cliente=cliente, numero_cnj="0000002-00.2024.5.16.0001", vara="V", comarca="C",
+            parte_contraria="Z",
+        )
+
+        self.assertEqual(self.criar(processo=alheio.pk).status_code, 400)
+        recusa = self.api.patch(f"{ROTA}{caso_id}/", {"processo": alheio.pk}, format="json")
+        self.assertEqual(recusa.status_code, 400)
+        self.assertIn("inválido", str(recusa.data))
+
+        self.assertEqual(self.api.patch(f"{ROTA}{caso_id}/", {"processo": self.processo.pk}, format="json").status_code, 200)
+        self.agente_responde(JOB)
+        self.api.post(f"{ROTA}{caso_id}/mensagens/", {"texto": "Vinculei o processo."}, format="json")
+        self.assertIn("centro cirúrgico", json.loads(self.pedidos_ao_agente()[-1].data)["relato"])
