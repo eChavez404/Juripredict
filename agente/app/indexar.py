@@ -13,7 +13,8 @@ import sys
 import time
 from pathlib import Path
 
-from google.genai.types import EmbedContentConfig
+from google.genai.errors import ClientError
+from google.genai.types import Content, EmbedContentConfig, Part
 
 from app.core import vector_store
 from app.core.config import (
@@ -28,6 +29,8 @@ from app.core.llm import require_google_key
 LOTE = 50
 # Os limites do plano gratuito do Gemini são por minuto: uma pausa curta entre os lotes evita o 429.
 PAUSA_SEGUNDOS = 1.0
+# O plano gratuito aceita 100 trechos por minuto: ao bater no limite, espera e tenta de novo.
+ESPERA_COTA_SEGUNDOS = 30
 METADADOS = (
     "id_sentenca",
     "numero_cnj",
@@ -63,6 +66,23 @@ def garantir_indice(pinecone) -> None:
     )
 
 
+def _vetores(genai, lote):
+    while True:
+        try:
+            return genai.models.embed_content(
+                model=EMBEDDING_MODEL,
+                # um Content por trecho: com uma lista de textos, o gemini-embedding-2 junta tudo
+                # num vetor só
+                contents=[Content(parts=[Part(text=documento(t))]) for t in lote],
+                config=EmbedContentConfig(output_dimensionality=EMBEDDING_DIMENSIONS),
+            )
+        except ClientError as exc:
+            if exc.code != 429:
+                raise
+            print(f"  cota do Google esgotada; nova tentativa em {ESPERA_COTA_SEGUNDOS} s")
+            time.sleep(ESPERA_COTA_SEGUNDOS)
+
+
 def indexar(arquivo: Path, *, pinecone=None, genai=None, pausa=PAUSA_SEGUNDOS) -> int:
     require_google_key()
     if not (PINECONE_API_KEY and PINECONE_INDEX):
@@ -88,11 +108,7 @@ def indexar(arquivo: Path, *, pinecone=None, genai=None, pausa=PAUSA_SEGUNDOS) -
     enviados = 0
     for inicio in range(0, len(pendentes), LOTE):
         lote = pendentes[inicio : inicio + LOTE]
-        resposta = genai.models.embed_content(
-            model=EMBEDDING_MODEL,
-            contents=[documento(t) for t in lote],
-            config=EmbedContentConfig(output_dimensionality=EMBEDDING_DIMENSIONS),
-        )
+        resposta = _vetores(genai, lote)
         vetores = [
             {"id": t["id"], "values": list(e.values), "metadata": metadados(t)}
             for t, e in zip(lote, resposta.embeddings, strict=True)
