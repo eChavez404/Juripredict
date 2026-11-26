@@ -14,3 +14,5 @@ class AnalistaState(TypedDict, total=False):
     cases: list[RetrievedCase]
     analysis: AnalysisDraft
     measurement: CaseMeasurement
+    # o que o advogado precisa ver na resposta, como a cota de buscas esgotada
+    aviso: str

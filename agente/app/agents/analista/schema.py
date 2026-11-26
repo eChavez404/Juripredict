@@ -213,6 +213,9 @@ class AnalysisResponse(BaseModel):
     casos: list[SimilarCase]
     suposicoes: list[str]
     disclaimer: str
+    aviso: str | None = Field(
+        default=None, description="Mostrado na resposta, como a cota esgotada"
+    )
 
 
 class AnalysisJob(BaseModel):

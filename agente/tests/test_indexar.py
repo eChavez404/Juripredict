@@ -40,6 +40,41 @@ class IndexarTests(unittest.TestCase):
         configurado.start()
         self.addCleanup(configurado.stop)
 
+    def test_cota_esgotada_espera_e_tenta_de_novo(self):
+        from google.genai.errors import ClientError
+
+        sucesso = self.genai.models.embed_content.side_effect
+        respostas = iter([ClientError(429, {"error": {"message": "quota"}}), None])
+
+        def falha_uma_vez(**kw):
+            erro = next(respostas)
+            if erro:
+                raise erro
+            return sucesso(**kw)
+
+        self.genai.models.embed_content.side_effect = falha_uma_vez
+        with patch.object(indexar.time, "sleep") as dormir:
+            self.assertEqual(self.rodar(), 2)
+        dormir.assert_called_once_with(indexar.ESPERA_COTA_SEGUNDOS)
+
+    def test_cota_diaria_para_e_guarda_o_que_ja_foi(self):
+        from google.genai.errors import ClientError
+
+        diaria = ClientError(429, {"error": {"message": "quotaId: EmbedContentRequestsPerDay"}})
+        self.genai.models.embed_content.side_effect = diaria
+        with self.assertRaises(SystemExit) as parada:
+            self.rodar()
+        self.assertIn("Rode de novo amanhã", str(parada.exception))
+
+    def test_limite_envia_so_parte_e_retoma_o_resto(self):
+        self.assertEqual(
+            indexar.indexar(
+                self.arquivo, pinecone=self.pinecone, genai=self.genai, pausa=0, limite=1
+            ),
+            1,
+        )
+        self.assertEqual(self.rodar(), 1)
+
     def rodar(self):
         return indexar.indexar(self.arquivo, pinecone=self.pinecone, genai=self.genai, pausa=0)
 
@@ -57,7 +92,7 @@ class IndexarTests(unittest.TestCase):
             RetrievedCase.model_validate({**vetor["metadata"], "similaridade": 0.5})
             self.assertNotIn(None, vetor["metadata"].values())
             self.assertEqual(vetor["metadata"]["temas"], ["insalubridade"])
-        enviado = self.genai.models.embed_content.call_args.kwargs["contents"][0]
+        enviado = self.genai.models.embed_content.call_args.kwargs["contents"][0].parts[0].text
         self.assertTrue(
             enviado.startswith("title: insalubridade · Vara do Trabalho de Balsas | text: ")
         )

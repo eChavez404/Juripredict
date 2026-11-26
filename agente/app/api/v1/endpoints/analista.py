@@ -69,6 +69,7 @@ def _run_job(job: AnalysisJob, request: CaseRequest) -> None:
             ],
             suposicoes=state["assumptions"],
             disclaimer=DISCLAIMER,
+            aviso=state.get("aviso"),
         )
         job.status = "done"  # depois do result: o polling nunca vê "done" sem resultado
     except Exception as exc:  # noqa: BLE001 — a borda sanitiza qualquer falha do provedor

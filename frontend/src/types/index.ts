@@ -207,6 +207,7 @@ export type AgenteResultado = {
   }>;
   suposicoes: string[];
   disclaimer: string;
+  aviso?: string | null;
 };
 
 export type AgenteCasoNovo = {

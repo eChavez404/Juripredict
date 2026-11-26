@@ -141,6 +141,21 @@ describe('Agente de IA', () => {
     expect(screen.getByLabelText('Processo do escritório (opcional)')).toHaveValue('3');
   });
 
+  it('a cota de buscas esgotada aparece na resposta do agente', async () => {
+    const aviso = 'A cota gratuita de buscas do Google acabou: esta análise usou só os critérios do tema, sem casos parecidos.';
+    vi.mocked(agenteService.casos).mockResolvedValue([{ id: 7, titulo: 'Limpeza hospitalar', tema: 'insalubridade', fase: 'instrucao', indice_atual: 58, atualizado_em: '2026-11-25T10:00:00Z' }]);
+    vi.mocked(agenteService.caso).mockResolvedValue(caso([
+      mensagem({ autor: 'advogado', texto: RELATO }),
+      mensagem({ texto: 'Falta a prova técnica.', resultado: { ...resultado(58), aviso }, indice_atual: 58, indice_potencial: 90 }),
+    ]));
+    render(tela());
+
+    fireEvent.click(await screen.findByRole('button', { name: /Limpeza hospitalar/ }));
+
+    const conversa = within(await screen.findByRole('region', { name: 'Conversa sobre o caso' }));
+    expect(await conversa.findByText(aviso)).toBeInTheDocument();
+  });
+
   it('a pergunta do agente vira resposta do advogado e a evolução mostra a diferença', async () => {
     vi.mocked(agenteService.casos).mockResolvedValue([{ id: 7, titulo: 'Limpeza hospitalar', tema: 'insalubridade', fase: 'instrucao', indice_atual: 58, atualizado_em: '2026-11-25T10:00:00Z' }]);
     vi.mocked(agenteService.caso).mockResolvedValue(conversaPronta());
