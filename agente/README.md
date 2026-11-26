@@ -6,7 +6,7 @@ Agente de IA que mede um caso trabalhista, aponta o que melhorar e traz os casos
 
 É o agente do [JuriPredict](../README.md). Não tem tela: o advogado usa a página **Agente de IA** do app React, e só o backend Django chama este serviço, que em produção roda no mesmo contêiner do site. Tem dependências e `.env` próprios, sem acesso ao banco nem às chaves do Django. Cobre dois temas: adicional de insalubridade e adicional de periculosidade. A estrutura segue a do Treino MD Chefe.
 
-**Situação:** estrutura pronta. A base de casos no Pinecone ainda não existe; sem ela, o agente responde só pelos critérios do tema e avisa isso na resposta.
+**Situação:** pronto e testado. A base de casos no Pinecone é criada pelo `app.indexar` (veja [Base de casos](#base-de-casos-rag)); sem ela, o agente responde só pelos critérios do tema e avisa isso na resposta.
 
 ## Como funciona
 

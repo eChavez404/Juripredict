@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 
 from dividir_dataset import atribuir, cortes_temporais
-from rotular_por_regra import CORRIGE_COERENCIA, VERSAO_DATASET
+from rotular_por_regra import CORRIGE_COERENCIA
 
 ENTRAM = {"deferido", "indeferido"}
 ESCAPE = {"prescrito_total", "prejudicado", "nao_analisado", "ambiguo",

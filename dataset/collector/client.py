@@ -17,7 +17,6 @@ Fatos empiricos que viram regra aqui:
 import logging
 import random
 import time
-from typing import Optional
 import requests
 
 from .models import Consulta, ErroFalcao, ErroLimite, ErroPagina, ErroSessao, Pagina
