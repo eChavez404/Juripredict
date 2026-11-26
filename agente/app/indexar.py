@@ -24,7 +24,7 @@ from app.core.config import (
     PINECONE_INDEX,
     PINECONE_NAMESPACE,
 )
-from app.core.llm import require_google_key
+from app.core.llm import cota_diaria, require_google_key
 
 LOTE = 50
 # Os limites do plano gratuito do Gemini são por minuto: uma pausa curta entre os lotes evita o 429.
@@ -79,11 +79,18 @@ def _vetores(genai, lote):
         except ClientError as exc:
             if exc.code != 429:
                 raise
+            if cota_diaria(exc):
+                raise SystemExit(
+                    "Cota diária do Google esgotada. Rode de novo amanhã: o envio continua de onde "
+                    "parou."
+                ) from None
             print(f"  cota do Google esgotada; nova tentativa em {ESPERA_COTA_SEGUNDOS} s")
             time.sleep(ESPERA_COTA_SEGUNDOS)
 
 
-def indexar(arquivo: Path, *, pinecone=None, genai=None, pausa=PAUSA_SEGUNDOS) -> int:
+def indexar(
+    arquivo: Path, *, pinecone=None, genai=None, pausa=PAUSA_SEGUNDOS, limite: int | None = None
+) -> int:
     require_google_key()
     if not (PINECONE_API_KEY and PINECONE_INDEX):
         raise SystemExit("Preencha PINECONE_API_KEY e PINECONE_INDEX no .env do agente.")
@@ -104,6 +111,7 @@ def indexar(arquivo: Path, *, pinecone=None, genai=None, pausa=PAUSA_SEGUNDOS) -
     with arquivo.open(encoding="utf-8") as linhas:
         pendentes = [t for t in map(json.loads, linhas) if t["id"] not in feitos]
     print(f"{len(feitos)} trechos já indexados; {len(pendentes)} a enviar")
+    pendentes = pendentes[:limite]
 
     enviados = 0
     for inicio in range(0, len(pendentes), LOTE):
@@ -126,7 +134,10 @@ def indexar(arquivo: Path, *, pinecone=None, genai=None, pausa=PAUSA_SEGUNDOS) -
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("arquivo", type=Path, help="JSONL do exportar_jurimetria.py --rag")
+    p.add_argument(
+        "--limite", type=int, help="máximo de trechos nesta rodada, para sobrar cota para o chat"
+    )
     a = p.parse_args()
     if not a.arquivo.exists():
         sys.exit(f"arquivo não encontrado: {a.arquivo}")
-    print(f"{indexar(a.arquivo)} trechos enviados ao índice {PINECONE_INDEX}.")
+    print(f"{indexar(a.arquivo, limite=a.limite)} trechos enviados ao índice {PINECONE_INDEX}.")

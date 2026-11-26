@@ -7,7 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.core import guardrails, vector_store
 from app.core.input_errors import NoCriteriaAvailable
-from app.core.llm import invoke_with_retry, model, provider_schema
+from app.core.llm import COTA_RENOVA, cota_diaria, invoke_with_retry, model, provider_schema
 from app.core.privacy import mask_documents
 from app.core.structured_output import (
     STRUCTURED_OUTPUT_RETRY_ERRORS,
@@ -66,10 +66,18 @@ def retrieve_cases(state: AnalistaState) -> AnalistaState:
         except vector_store.VectorStoreError as exc:
             # Só a classe da causa: a mensagem do provedor pode conter a consulta.
             logger.warning("vector_store_failed cause=%s", type(exc.__cause__).__name__)
-            assumptions.append(
-                "A busca na base de casos falhou: a análise usou só os critérios do tema."
+            if getattr(exc.__cause__, "code", None) != 429:
+                assumptions.append(
+                    "A busca na base de casos falhou: a análise usou só os critérios do tema."
+                )
+                return {**state, "cases": [], "assumptions": assumptions}
+            aviso = (
+                "A cota gratuita de buscas do Google acabou: esta análise usou só os critérios "
+                "do tema, sem casos parecidos. "
+                + (COTA_RENOVA if cota_diaria(exc.__cause__) else "Tente de novo em 1 minuto.")
             )
-            return {**state, "cases": [], "assumptions": assumptions}
+            assumptions.append(aviso)
+            return {**state, "cases": [], "assumptions": assumptions, "aviso": aviso}
         cases = [case for case in found if not guardrails.has_injection(case.texto)]
         if len(cases) < len(found):
             assumptions.append("Um caso da base foi descartado por conter um comando para a IA.")

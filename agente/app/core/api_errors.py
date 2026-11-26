@@ -16,7 +16,13 @@ from langchain_core.exceptions import (
 
 from app.core.guardrails import GuardrailBlocked, UnsafeInput
 from app.core.input_errors import NoCriteriaAvailable
-from app.core.llm import LLMNotConfiguredError, LLMTimeoutError, provider_status
+from app.core.llm import (
+    COTA_RENOVA,
+    LLMNotConfiguredError,
+    LLMTimeoutError,
+    cota_diaria,
+    provider_status,
+)
 from app.core.structured_output import StructuredOutputError
 
 logger = logging.getLogger(__name__)
@@ -59,7 +65,12 @@ def analysis_error(exc: Exception, operation: str) -> HTTPException:
         detail = "O provedor de IA excedeu o tempo disponível. Tente novamente."
     elif isinstance(exc, ModelRateLimitError):
         code, category = 429, "provider_rate_limit"
-        detail = "O limite de uso da IA foi atingido. Tente novamente mais tarde."
+        detail = (
+            f"A cota gratuita diária da IA (Google Gemini) acabou. {COTA_RENOVA}"
+            if cota_diaria(exc)
+            else "Muitas análises no mesmo minuto: a cota gratuita da IA (Google Gemini) acabou "
+            "por agora. Tente de novo em 1 minuto."
+        )
     elif isinstance(exc, (ModelAPIError, ModelConnectionError)):
         code, category = 503, "provider_unavailable"
         detail = "O serviço de IA está sobrecarregado no momento. Tente de novo em instantes."

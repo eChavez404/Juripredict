@@ -57,6 +57,24 @@ class IndexarTests(unittest.TestCase):
             self.assertEqual(self.rodar(), 2)
         dormir.assert_called_once_with(indexar.ESPERA_COTA_SEGUNDOS)
 
+    def test_cota_diaria_para_e_guarda_o_que_ja_foi(self):
+        from google.genai.errors import ClientError
+
+        diaria = ClientError(429, {"error": {"message": "quotaId: EmbedContentRequestsPerDay"}})
+        self.genai.models.embed_content.side_effect = diaria
+        with self.assertRaises(SystemExit) as parada:
+            self.rodar()
+        self.assertIn("Rode de novo amanhã", str(parada.exception))
+
+    def test_limite_envia_so_parte_e_retoma_o_resto(self):
+        self.assertEqual(
+            indexar.indexar(
+                self.arquivo, pinecone=self.pinecone, genai=self.genai, pausa=0, limite=1
+            ),
+            1,
+        )
+        self.assertEqual(self.rodar(), 1)
+
     def rodar(self):
         return indexar.indexar(self.arquivo, pinecone=self.pinecone, genai=self.genai, pausa=0)
 
